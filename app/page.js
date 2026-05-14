@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -9,352 +10,248 @@ function formatAED(value) {
   return `AED ${Number(value).toLocaleString("en-AE")}`;
 }
 
-function formatNumber(value) {
-  if (value === null || value === undefined) return "—";
-  return Number(value).toLocaleString("en-AE");
+function statusBadgeStyle(status) {
+  switch (status) {
+    case "approved":
+      return {
+        bg: "var(--mz-green-bg)",
+        border: "var(--mz-green-border)",
+        color: "var(--mz-green-text)",
+      };
+    case "rejected":
+    case "declined":
+    case "expired":
+      return {
+        bg: "var(--mz-red-bg)",
+        border: "var(--mz-red-border)",
+        color: "var(--mz-red-text)",
+      };
+    case "under_review":
+    case "extracting":
+    case "uploading":
+      return {
+        bg: "var(--mz-amber-bg)",
+        border: "var(--mz-amber-border)",
+        color: "var(--mz-amber-text)",
+      };
+    default:
+      return {
+        bg: "rgba(255, 255, 255, 0.04)",
+        border: "var(--mz-border)",
+        color: "var(--mz-muted)",
+      };
+  }
 }
 
-export default function Home() {
+export default function DashboardPage() {
   const [cases, setCases] = useState([]);
-  const [selectedCase, setSelectedCase] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  async function loadCases() {
-    try {
-      setLoading(true);
-      setError("");
-
-      const res = await fetch(`${API_BASE_URL}/cases`, {
-        cache: "no-store",
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to fetch cases: ${res.status}`);
-      }
-
-      const data = await res.json();
-      setCases(data);
-
-      if (data.length > 0) {
-        await loadCaseDetail(data[0].id);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load cases");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadCaseDetail(caseId) {
-    try {
-      setDetailLoading(true);
-      setError("");
-
-      const res = await fetch(`${API_BASE_URL}/cases/${caseId}`, {
-        cache: "no-store",
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to fetch case detail: ${res.status}`);
-      }
-
-      const data = await res.json();
-      setSelectedCase(data);
-    } catch (err) {
-      setError(err.message || "Failed to load case detail");
-    } finally {
-      setDetailLoading(false);
-    }
-  }
-
-  async function updateStatus(newStatus) {
-    if (!selectedCase) return;
-
-    try {
-      setSaving(true);
-      setError("");
-
-      const res = await fetch(`${API_BASE_URL}/cases/${selectedCase.id}/field`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          field_name: "status",
-          old_value: selectedCase.status,
-          new_value: newStatus,
-          changed_by: "Pranit",
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to update status: ${res.status}`);
-      }
-
-      const updated = await res.json();
-      setSelectedCase(updated);
-      await loadCases();
-    } catch (err) {
-      setError(err.message || "Failed to update status");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   useEffect(() => {
-    loadCases();
+    async function load() {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await fetch(`${API_BASE_URL}/cases`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Failed to fetch cases: ${res.status}`);
+        const data = await res.json();
+        setCases(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setError(err.message || "Failed to load cases");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, []);
 
-  const extracted = selectedCase?.extracted_json || {};
-  const creditScore = extracted.credit_score || {};
-  const posHeadline = extracted.pos_headline || {};
-  const crossChecks = extracted.cross_checks || {};
-  const outstandingQueries = creditScore.outstanding_queries || [];
-  const scoreBreakdown = creditScore.score_breakdown || [];
+  const totalCases = cases.length;
+  const avgScore =
+    cases.length > 0
+      ? (
+          cases.reduce((s, c) => s + (Number(c.score) || 0), 0) / cases.length
+        ).toFixed(1)
+      : "—";
+  const totalCeiling = cases.reduce(
+    (s, c) => s + (Number(c.ceiling_aed) || 0),
+    0,
+  );
+
+  const statusCounts = cases.reduce((acc, c) => {
+    const k = c.status || "unknown";
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const statusEntries = Object.entries(statusCounts).sort(
+    (a, b) => b[1] - a[1],
+  );
 
   return (
-    <main className="min-h-screen bg-[#07111f] text-slate-100">
-      <div className="flex min-h-screen">
-        <aside className="w-72 border-r border-white/10 bg-[#040d18] p-6">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 font-bold text-[#04342c]">
-              M
-            </div>
-            <div>
-              <div className="text-xl font-semibold">Mezza</div>
-              <div className="text-xs text-slate-400">Risk Assessment Platform</div>
-            </div>
-          </div>
-
-          <div className="mb-3 text-xs uppercase tracking-widest text-slate-500">
-            Cases
-          </div>
-
-          <div className="space-y-2">
-            {cases.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => loadCaseDetail(item.id)}
-                className={`w-full rounded-xl border p-4 text-left transition ${
-                  selectedCase?.id === item.id
-                    ? "border-emerald-400/40 bg-emerald-400/10"
-                    : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
-                }`}
-              >
-                <div className="text-sm font-semibold">{item.venue_name}</div>
-                <div className="mt-1 text-xs text-slate-400">{item.case_ref}</div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="rounded-full bg-white/10 px-2 py-1 text-xs">
-                    {item.grade}
-                  </span>
-                  <span className="text-xs text-emerald-300">{item.score}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        <section className="flex-1 p-8">
-          <div className="mb-8 flex items-start justify-between">
-            <div>
-              <div className="mb-2 text-xs uppercase tracking-widest text-emerald-300">
-                Live Supabase Case Data
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight">
-                {selectedCase?.venue_name || "Loading case..."}
-              </h1>
-              <p className="mt-2 text-sm text-slate-400">
-                {selectedCase?.group_name || "—"} · {selectedCase?.location || "—"}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4 text-right">
-              <div className="text-xs uppercase tracking-widest text-slate-500">
-                API Status
-              </div>
-              <div className="mt-1 text-sm text-emerald-300">Connected</div>
-              <div className="mt-1 text-xs text-slate-500">{API_BASE_URL}</div>
-            </div>
-          </div>
-
-          {error && (
-            <div className="mb-6 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-
-          {loading || detailLoading ? (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 text-slate-300">
-              Loading live case data...
-            </div>
-          ) : selectedCase ? (
-            <>
-              <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                  <div className="text-xs uppercase tracking-widest text-slate-500">
-                    Score
-                  </div>
-                  <div className="mt-3 text-4xl font-semibold text-emerald-300">
-                    {selectedCase.score}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-400">
-                    Grade {selectedCase.grade}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                  <div className="text-xs uppercase tracking-widest text-slate-500">
-                    Ceiling
-                  </div>
-                  <div className="mt-3 text-2xl font-semibold">
-                    {formatAED(selectedCase.ceiling_aed)}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-400">
-                    {creditScore.ceiling_basis || "Risk-based exposure"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                  <div className="text-xs uppercase tracking-widest text-slate-500">
-                    Status
-                  </div>
-                  <div className="mt-3 text-2xl font-semibold text-amber-300">
-                    {selectedCase.status}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-400">
-                    Updates write to audit_log
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                  <div className="text-xs uppercase tracking-widest text-slate-500">
-                    LTM Revenue
-                  </div>
-                  <div className="mt-3 text-2xl font-semibold">
-                    {formatAED(creditScore.ltm_revenue_aed)}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-400">
-                    Card share {posHeadline.card_share_pct || creditScore.card_share_pct || "—"}%
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                  <div className="text-xs uppercase tracking-widest text-slate-500">
-                    Financial Health
-                  </div>
-                  <div className="mt-3 text-3xl font-semibold text-emerald-300">
-                    {creditScore.financial_health_score || "—"}
-                  </div>
-                  <div className="text-sm text-slate-400">
-                    Grade {creditScore.financial_health_grade || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                  <div className="text-xs uppercase tracking-widest text-slate-500">
-                    Restaurant Profile
-                  </div>
-                  <div className="mt-3 text-3xl font-semibold text-indigo-300">
-                    {creditScore.restaurant_profile_score || "—"}
-                  </div>
-                  <div className="text-sm text-slate-400">
-                    Grade {creditScore.restaurant_profile_grade || "—"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                  <div className="text-xs uppercase tracking-widest text-slate-500">
-                    Trade Licence
-                  </div>
-                  <div className="mt-3 text-2xl font-semibold text-red-300">
-                    {crossChecks.tl_status || "—"}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-400">
-                    {crossChecks.tl_flag || "No TL flag available"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-6 rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs uppercase tracking-widest text-slate-500">
-                      Analyst Status Controls
-                    </div>
-                    <div className="mt-1 text-sm text-slate-400">
-                      These buttons call PATCH /cases/&lbrace;id&rbrace;/field and create audit_log rows.
-                    </div>
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {saving ? "Saving..." : "Ready"}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  {["data_bank_ready", "under_review", "approved", "rejected"].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => updateStatus(status)}
-                      disabled={saving || selectedCase.status === status}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Set {status}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                  <div className="mb-4 text-xs uppercase tracking-widest text-slate-500">
-                    Score Breakdown
-                  </div>
-
-                  <div className="space-y-3">
-                    {scoreBreakdown.map((row, index) => (
-                      <div key={index} className="rounded-xl bg-white/[0.03] p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium">{row.category}</div>
-                          <div className="text-sm text-emerald-300">
-                            {row.score}/{row.max}
-                          </div>
-                        </div>
-                        <div className="mt-2 text-sm text-slate-400">{row.note}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-[#0d1929] p-5">
-                  <div className="mb-4 text-xs uppercase tracking-widest text-slate-500">
-                    Outstanding Queries
-                  </div>
-
-                  <div className="space-y-3">
-                    {outstandingQueries.map((item, index) => (
-                      <div key={index} className="rounded-xl bg-white/[0.03] p-4">
-                        <div className="mb-2 inline-flex rounded-full bg-amber-400/10 px-2 py-1 text-xs text-amber-300">
-                          {item.priority}
-                        </div>
-                        <div className="text-sm text-slate-300">{item.query}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8">
-              No cases found.
-            </div>
-          )}
-        </section>
+    <div className="px-8 py-8">
+      <div className="mb-8">
+        <div className="text-xs uppercase tracking-widest text-[color:var(--mz-muted)]">
+          Dashboard
+        </div>
+        <h1 className="mt-2 text-3xl font-semibold text-[color:var(--mz-text)]">
+          Portfolio Overview
+        </h1>
+        <p className="mt-2 text-sm text-[color:var(--mz-muted)]">
+          Live case database. Click a row to open the case file.
+        </p>
       </div>
-    </main>
+
+      {error && (
+        <div
+          className="mb-6 rounded-xl border p-4 text-sm"
+          style={{
+            backgroundColor: "var(--mz-red-bg)",
+            borderColor: "var(--mz-red-border)",
+            color: "var(--mz-red-text)",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatTile label="Total Cases" value={loading ? "…" : totalCases} />
+        <StatTile
+          label="Average Score"
+          value={loading ? "…" : avgScore}
+          accent
+        />
+        <StatTile
+          label="Aggregate Ceiling"
+          value={loading ? "…" : formatAED(totalCeiling)}
+          small
+        />
+        <StatTile
+          label="Statuses"
+          value={
+            loading
+              ? "…"
+              : statusEntries.length === 0
+                ? "—"
+                : `${statusEntries[0][0]} (${statusEntries[0][1]})`
+          }
+          small
+        />
+      </div>
+
+      <div
+        className="rounded-2xl border"
+        style={{
+          backgroundColor: "var(--mz-card)",
+          borderColor: "var(--mz-border)",
+        }}
+      >
+        <div
+          className="border-b px-6 py-4 text-xs uppercase tracking-widest text-[color:var(--mz-muted)]"
+          style={{ borderColor: "var(--mz-border)" }}
+        >
+          Cases
+        </div>
+
+        {loading ? (
+          <div className="p-6 text-sm text-[color:var(--mz-muted)]">
+            Loading cases...
+          </div>
+        ) : cases.length === 0 ? (
+          <div className="p-6 text-sm text-[color:var(--mz-muted)]">
+            No cases yet.
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr
+                className="text-left text-xs uppercase tracking-widest text-[color:var(--mz-muted)]"
+                style={{ borderBottom: "1px solid var(--mz-border)" }}
+              >
+                <th className="px-6 py-3 font-medium">Case Ref</th>
+                <th className="px-6 py-3 font-medium">Venue</th>
+                <th className="px-6 py-3 font-medium">Group</th>
+                <th className="px-6 py-3 font-medium">Score</th>
+                <th className="px-6 py-3 font-medium">Grade</th>
+                <th className="px-6 py-3 font-medium">Ceiling</th>
+                <th className="px-6 py-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cases.map((c) => {
+                const badge = statusBadgeStyle(c.status);
+                return (
+                  <tr
+                    key={c.id}
+                    className="text-sm transition hover:bg-white/[0.02]"
+                    style={{ borderBottom: "1px solid var(--mz-border)" }}
+                  >
+                    <td className="px-6 py-4">
+                      <Link
+                        href={`/cases/${c.case_ref || c.id}`}
+                        className="mz-mono text-[color:var(--mz-accent)] hover:underline"
+                      >
+                        {c.case_ref || "—"}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 text-[color:var(--mz-text)]">
+                      {c.venue_name || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-[color:var(--mz-muted)]">
+                      {c.group_name || "—"}
+                    </td>
+                    <td className="px-6 py-4 mz-mono text-[color:var(--mz-accent)]">
+                      {c.score ?? "—"}
+                    </td>
+                    <td className="px-6 py-4 mz-mono text-[color:var(--mz-text)]">
+                      {c.grade || "—"}
+                    </td>
+                    <td className="px-6 py-4 mz-mono text-[color:var(--mz-text)]">
+                      {formatAED(c.ceiling_aed)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className="rounded-full border px-2.5 py-1 text-xs"
+                        style={{
+                          backgroundColor: badge.bg,
+                          borderColor: badge.border,
+                          color: badge.color,
+                        }}
+                      >
+                        {c.status || "—"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatTile({ label, value, accent = false, small = false }) {
+  return (
+    <div
+      className="rounded-2xl border p-5"
+      style={{
+        backgroundColor: "var(--mz-card)",
+        borderColor: "var(--mz-border)",
+      }}
+    >
+      <div className="text-xs uppercase tracking-widest text-[color:var(--mz-muted)]">
+        {label}
+      </div>
+      <div
+        className={`mt-3 mz-mono font-semibold ${small ? "text-xl" : "text-3xl"}`}
+        style={{
+          color: accent ? "var(--mz-accent)" : "var(--mz-text)",
+        }}
+      >
+        {value}
+      </div>
+    </div>
   );
 }
