@@ -235,7 +235,20 @@ export default function CaseOverviewPage() {
           }
         />
       </div>
-
+{/* Quick navigation to sub-pages */}
+      <div className="mb-6 flex gap-3">
+        <Link
+          href={`/cases/${caseData.case_ref || caseData.id}/data-bank`}
+          className="rounded-xl border px-4 py-2 text-sm transition hover:opacity-80"
+          style={{
+            backgroundColor: "rgba(0, 196, 159, 0.08)",
+            borderColor: "var(--mz-accent)",
+            color: "var(--mz-accent)",
+          }}
+        >
+          Open Data Bank →
+        </Link>
+      </div>
       <div
         className="rounded-2xl border p-5"
         style={{
