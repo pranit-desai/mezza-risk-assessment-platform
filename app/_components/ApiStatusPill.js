@@ -1,64 +1,72 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function ApiStatusPill() {
-  const [status, setStatus] = useState("checking"); // "checking" | "connected" | "down"
+  const [status, setStatus] = useState("checking");
 
   useEffect(() => {
-    let cancelled = false;
+    let active = true;
 
     async function check() {
       try {
-        const res = await fetch(`${API_BASE_URL}/health`, {
-          cache: "no-store",
-        });
-        if (cancelled) return;
-        setStatus(res.ok ? "connected" : "down");
-      } catch {
-        if (!cancelled) setStatus("down");
+        const res = await fetch(`${API_BASE_URL}/health`, { cache: "no-store" });
+        if (!active) return;
+        setStatus(res.ok ? "ok" : "down");
+      } catch (e) {
+        if (!active) return;
+        setStatus("down");
       }
     }
 
     check();
-    // Re-check every 30 seconds while the page is open
-    const id = setInterval(check, 30000);
-
+    const interval = setInterval(check, 30_000);
     return () => {
-      cancelled = true;
-      clearInterval(id);
+      active = false;
+      clearInterval(interval);
     };
   }, []);
 
   const dotColor =
-    status === "connected"
-      ? "var(--mz-accent)"
+    status === "ok"
+      ? "var(--mz-tier-excellent-plus)"
       : status === "down"
-        ? "var(--mz-red-text)"
-        : "var(--mz-muted)";
-
+      ? "var(--mz-tier-critical)"
+      : "var(--mz-muted)";
   const label =
-    status === "connected"
-      ? "API Connected"
+    status === "ok"
+      ? "API healthy"
       : status === "down"
-        ? "API Down"
-        : "Checking...";
+      ? "API down"
+      : "Checking API...";
 
   return (
     <div
-      className="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs"
       style={{
-        backgroundColor: "rgba(255, 255, 255, 0.04)",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "5px 12px",
+        borderRadius: 999,
+        background: "var(--mz-card)",
         border: "1px solid var(--mz-border)",
+        fontSize: "var(--mz-fs-xs)",
+        fontWeight: 500,
+        color: "var(--mz-muted)",
       }}
     >
       <span
-        className="h-2 w-2 rounded-full"
-        style={{ backgroundColor: dotColor }}
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          background: dotColor,
+          flexShrink: 0,
+        }}
       />
-      <span className="text-[color:var(--mz-muted)]">{label}</span>
+      {label}
     </div>
   );
 }

@@ -1,0 +1,412 @@
+// ===========================================================================
+// MEZZA DATA BANK SCHEMA — v2 (post-reconciliation against epik_extracted.json)
+// ===========================================================================
+//
+// This is the contract between the Python extraction script and the Data Bank UI.
+//
+// Every jsonPath in this file has been verified against the real extracted_json
+// output. Every field key matches a key the script actually produces. The only
+// exceptions are fields explicitly marked `manualFill: true`, which the script
+// does NOT yet produce — these display in the UI with an empty state and
+// require the analyst to fill them by hand using the override flow.
+//
+// FIELD ATTRIBUTES:
+//   key         — exact JSON key under jsonPath in extracted_json
+//   label       — display label for the analyst
+//   type        — text | number | currency | percent | date | boolean
+//   editable    — analyst can override via PATCH /cases/{id}/extracted-field
+//   required    — counts toward the completeness badge
+//   manualFill  — true if the script does NOT produce this field; analyst fills
+//                 it manually via the override mechanism. Shows a different
+//                 visual affordance ("Enter manually" hint).
+//   mirroredFrom — read-only display of another section's value (no override)
+//   note        — inline help text shown next to the field
+//   policyRef   — citation to the underwriting policy section/rule
+//
+// SECTION ATTRIBUTES:
+//   id          — URL slug and React key
+//   label       — section name in the sub-nav
+//   group       — "legal" | "financial" | "analysis"
+//   jsonPath    — dotted path inside extracted_json (empty string = root)
+//   fields      — ordered list of field objects (see above)
+//   tableRender — true if this section's jsonPath points at an array and the
+//                 page should render it as a table rather than a field list.
+//                 If true, `fields` describes the columns of the table.
+//   nested      — optional list of {label, jsonPath} for nested objects to
+//                 render as sub-cards (used by cross_checks for affiliated
+//                 parties, march_2025_closure, pos_system_mismatch)
+//
+// CHANGES VS v1:
+//   + identity: renamed `group_name` → `operator_group`, `location` → 3 fields,
+//     `concept` → `venue_type`. Added website, holding_entity, lettable_sqm,
+//     venue_legal_name, location_district, specific_location, sub_industry.
+//   + trade_licence: renamed `activities` → `permitted_activities`. Added
+//     formation_number, company_name_en, company_name_ar, company_type,
+//     days_to_expiry, years_operational, licence_period_years.
+//   + moa: renamed `share_capital_aed` → `capital_aed`, `establishment_date`
+//     → `execution_date`. Replaced `ownership_summary` with individuals and
+//     corporate_shareholders (now rendered separately as tables in future).
+//   + lease: kept the 4 real fields (annual_rent_aed, rent_as_pct_of_net_revenue,
+//     source, note). Added 11 manualFill fields per policy 2.2 requirements
+//     (Ejari, expiry, term, escalation, security deposit, rent-free).
+//   + vat: collapsed two former sections (vat_certificate + vat_returns) into
+//     one. Quarterly returns array is tableRender. Added stagger, signatory.
+//   + pos_headline (new): the 19-field POS summary from script.
+//   + pos_monthly: now points at the array, tableRender:true. 12 rows.
+//   + pos_accounting_groups (renamed from pos_category_mix): tableRender:true.
+//     22 rows. By drink/menu category from the POS system.
+//   + cogs: rewrote to show 3-scenario blended (low/mid/high), chosen, GP.
+//   + other_expenses: added 3-scenario totals and 6-row category table.
+//   + pnl: rewrote to single P&L per Pranit's decision. Shows corrected
+//     EBIT/salary only by default. Notes preserved.
+//   + cross_checks: added 3 nested rich objects (affiliated_parties,
+//     march_2025_closure, pos_system_mismatch).
+//   + credit_score (new section, "Scoring Engine Output"): 29 fields plus
+//     score_breakdown (10-row table) and outstanding_queries (6-row table).
+//   + policy_checks (new section): computed at render time from reality
+//     values vs policy thresholds. No jsonPath. Frontend derives it.
+//
+// FIELDS DROPPED FROM v1:
+//   - identity.group_name (now operator_group)
+//   - vat_returns section (merged into vat)
+//   - vat_certificate section (merged into vat)
+//   - seasonality section (data is in pos_monthly.seasonality_pct column)
+//   - salary section (data is in pnl.salary_aed_corrected)
+//   - pos_category_mix (renamed to pos_accounting_groups, restructured)
+//
+// ===========================================================================
+
+export const DATA_BANK_GROUPS = [
+  { id: "legal", label: "Legal & Identity" },
+  { id: "financial", label: "Financial Inputs" },
+  { id: "analysis", label: "Analysis & Output" },
+];
+
+export const DATA_BANK_SECTIONS = [
+  // -------------------------------------------------------------------------
+  // LEGAL & IDENTITY (5 sections)
+  // -------------------------------------------------------------------------
+  {
+    id: "identity",
+    label: "Identity",
+    group: "legal",
+    jsonPath: "identity",
+    fields: [
+      { key: "venue_name", label: "Venue Name", type: "text", editable: true, required: true },
+      { key: "venue_legal_name", label: "Legal Name", type: "text", editable: true, required: true },
+      { key: "operator_group", label: "Operator Group", type: "text", editable: true, required: true, policyRef: "2.4 Restaurant Profile" },
+      { key: "holding_entity", label: "Holding Entity", type: "text", editable: true, required: false },
+      { key: "venue_type", label: "Venue Type", type: "text", editable: true, required: true, policyRef: "2.2 Type of Establishment" },
+      { key: "sub_industry", label: "Sub-Industry", type: "text", editable: true, required: false },
+      { key: "location_city", label: "City", type: "text", editable: true, required: true, policyRef: "2.2 Location: UAE" },
+      { key: "location_district", label: "District", type: "text", editable: true, required: true },
+      { key: "specific_location", label: "Specific Address", type: "text", editable: true, required: false },
+      { key: "lettable_sqm", label: "Lettable Sqm", type: "number", editable: true, required: false },
+      { key: "website", label: "Website", type: "text", editable: true, required: false, policyRef: "2.4 Brand Strength" },
+      { key: "commercial_poc", label: "Commercial POC", type: "text", editable: true, required: false },
+      { key: "analyst", label: "Analyst", type: "text", editable: true, required: false },
+    ],
+  },
+  {
+    id: "trade-licence",
+    label: "Trade Licence",
+    group: "legal",
+    jsonPath: "trade_licence",
+    fields: [
+      { key: "licence_number", label: "Licence Number", type: "text", editable: true, required: true, policyRef: "2.2 Active Trade Licence required" },
+      { key: "formation_number", label: "Formation Number", type: "text", editable: true, required: false },
+      { key: "company_name_en", label: "Company Name (EN)", type: "text", editable: true, required: true },
+      { key: "company_name_ar", label: "Company Name (AR)", type: "text", editable: true, required: false },
+      { key: "company_type", label: "Company Type", type: "text", editable: true, required: true },
+      { key: "issuing_authority", label: "Issuing Authority", type: "text", editable: true, required: true },
+      { key: "registered_address", label: "Registered Address", type: "text", editable: true, required: false },
+      { key: "issue_date", label: "Issue Date", type: "date", editable: true, required: true },
+      { key: "expiry_date", label: "Expiry Date", type: "date", editable: true, required: true, policyRef: "2.2 Active TL required for disbursement" },
+      { key: "days_to_expiry", label: "Days to Expiry", type: "number", editable: false, required: true, note: "Negative = expired. Hard disbursement block per policy." },
+      { key: "licence_period_years", label: "Licence Period (Years)", type: "number", editable: true, required: false },
+      { key: "years_operational", label: "Years Operational", type: "number", editable: true, required: true, policyRef: "2.2 Min 12 months operational" },
+      { key: "status", label: "Status", type: "text", editable: false, required: true },
+      { key: "managers_on_licence", label: "Managers on Licence", type: "text", editable: false, required: false, note: "Stored as list. Render as comma-separated for now." },
+      { key: "permitted_activities", label: "Permitted Activities", type: "text", editable: false, required: false, note: "Stored as list. Render as comma-separated for now." },
+    ],
+  },
+  {
+    id: "moa",
+    label: "MOA",
+    group: "legal",
+    jsonPath: "moa",
+    fields: [
+      { key: "company_name", label: "Company Name", type: "text", editable: true, required: true },
+      { key: "execution_date", label: "Execution Date", type: "date", editable: true, required: true },
+      { key: "registered_address", label: "Registered Address", type: "text", editable: true, required: false },
+      { key: "capital_aed", label: "Share Capital", type: "currency", editable: true, required: true },
+      { key: "total_shares", label: "Total Shares", type: "number", editable: true, required: true },
+      { key: "share_value_aed", label: "Share Value", type: "currency", editable: true, required: false },
+      { key: "vat_signatory", label: "VAT Signatory", type: "text", editable: true, required: false },
+      { key: "individuals", label: "Individual Shareholders", type: "text", editable: false, required: true, note: "Stored as list of {name, share, role}. Render as a table in future." },
+      { key: "corporate_shareholders", label: "Corporate Shareholders", type: "text", editable: false, required: false, note: "Stored as list. Render as a table in future." },
+    ],
+  },
+  {
+    id: "lease",
+    label: "Lease & Rent",
+    group: "legal",
+    jsonPath: "lease",
+    fields: [
+      // Real fields from the script
+      { key: "annual_rent_aed", label: "Annual Rent", type: "currency", editable: true, required: true, policyRef: "2.4 Lease risk" },
+      { key: "rent_as_pct_of_net_revenue", label: "Rent / Net Revenue %", type: "percent", editable: false, required: true, note: "Computed from POS. Flag if >25%." },
+      { key: "source", label: "Source", type: "text", editable: true, required: false },
+      { key: "note", label: "Analyst Note", type: "text", editable: true, required: false },
+      // Manual-fill fields — analyst enters from lease document
+      { key: "landlord", label: "Landlord", type: "text", editable: true, required: true, manualFill: true, policyRef: "2.2 Ejari/rent contracts required" },
+      { key: "premises", label: "Premises", type: "text", editable: true, required: false, manualFill: true },
+      { key: "term_years", label: "Term (Years)", type: "number", editable: true, required: true, manualFill: true },
+      { key: "commencement_date", label: "Commencement Date", type: "date", editable: true, required: false, manualFill: true },
+      { key: "expiry_date", label: "Expiry Date", type: "date", editable: true, required: true, manualFill: true, policyRef: "2.2 Up-to-date Ejari required" },
+      { key: "annual_escalation_pct", label: "Annual Escalation %", type: "percent", editable: true, required: false, manualFill: true },
+      { key: "security_deposit_aed", label: "Security Deposit", type: "currency", editable: true, required: false, manualFill: true },
+      { key: "rent_free_months", label: "Rent-Free Period (Months)", type: "number", editable: true, required: false, manualFill: true },
+      { key: "ejari_registered", label: "Ejari Registered", type: "boolean", editable: true, required: true, manualFill: true, policyRef: "2.2 Ejari required" },
+      { key: "ejari_number", label: "Ejari Number", type: "text", editable: true, required: false, manualFill: true },
+      { key: "ejari_expiry_date", label: "Ejari Expiry", type: "date", editable: true, required: false, manualFill: true },
+    ],
+  },
+  {
+    id: "vat",
+    label: "VAT",
+    group: "legal",
+    jsonPath: "vat",
+    fields: [
+      { key: "trn", label: "TRN", type: "text", editable: true, required: true, policyRef: "2.2 Registered for VAT required" },
+      { key: "effective_registration_date", label: "Registration Date", type: "date", editable: true, required: true },
+      { key: "tax_year_end", label: "Tax Year End", type: "date", editable: true, required: true },
+      { key: "stagger", label: "Stagger", type: "text", editable: true, required: false, note: "Filing schedule, e.g. 'Quarterly Feb-Jan'" },
+      { key: "vat_vs_pos_correlation_pct", label: "VAT vs POS Correlation %", type: "percent", editable: false, required: true, policyRef: "2.2 Max 30% discrepancy" },
+      { key: "period_note", label: "Period Note", type: "text", editable: true, required: false },
+      // Quarterly returns and signatory are sub-objects/arrays. Rendered separately.
+      { key: "quarterly_returns", label: "Quarterly Returns (4)", type: "text", editable: false, required: true, note: "Array of 4 quarters. Render as table." },
+      { key: "annual_totals", label: "Annual Totals", type: "text", editable: false, required: true, note: "Object: total_payable, total_vat_due, total_net_supplies." },
+      { key: "authorised_signatory", label: "Authorised Signatory", type: "text", editable: false, required: false, note: "Object: name, email, mobile." },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // FINANCIAL INPUTS (5 sections)
+  // -------------------------------------------------------------------------
+  {
+    id: "pos-headline",
+    label: "POS Headline",
+    group: "financial",
+    jsonPath: "pos_headline",
+    fields: [
+      { key: "period_start", label: "Period Start", type: "date", editable: false, required: true },
+      { key: "period_end", label: "Period End", type: "date", editable: false, required: true },
+      { key: "period_months", label: "Period Months", type: "number", editable: false, required: true },
+      { key: "gross_revenue_inc_tax", label: "Gross Revenue (inc tax)", type: "currency", editable: false, required: true, policyRef: "2.2 Min AED 2.5M LTM" },
+      { key: "net_revenue_ex_tax", label: "Net Revenue (ex tax)", type: "currency", editable: false, required: true },
+      { key: "total_tax", label: "Total Tax", type: "currency", editable: false, required: false },
+      { key: "card_revenue_aed", label: "Card Revenue", type: "currency", editable: false, required: true },
+      { key: "cash_revenue_aed", label: "Cash Revenue", type: "currency", editable: false, required: true },
+      { key: "card_share_pct", label: "Card Share %", type: "percent", editable: false, required: true, policyRef: "2.2 Cashless ≥50%" },
+      { key: "cash_share_pct", label: "Cash Share %", type: "percent", editable: false, required: false, policyRef: "2.9 Cash intensity ≥50% flag" },
+      { key: "visa_aed", label: "Visa AED", type: "currency", editable: false, required: false },
+      { key: "mastercard_aed", label: "Mastercard AED", type: "currency", editable: false, required: false },
+      { key: "total_orders", label: "Total Orders", type: "number", editable: false, required: true },
+      { key: "total_covers", label: "Total Covers", type: "number", editable: false, required: true },
+      { key: "avg_spend_per_cover_aed", label: "Avg Spend / Cover", type: "currency", editable: false, required: false },
+      { key: "avg_spend_per_order_spt_aed", label: "Avg Spend / Order (SPT)", type: "currency", editable: false, required: true, note: "Drives salary band assumption" },
+      { key: "cancelled_count", label: "Cancelled Orders", type: "number", editable: false, required: false },
+      { key: "cancelled_value_aed", label: "Cancelled Value", type: "currency", editable: false, required: false },
+      { key: "cancellation_rate_pct", label: "Cancellation Rate %", type: "percent", editable: false, required: true },
+    ],
+  },
+  {
+    id: "pos-monthly",
+    label: "POS Monthly",
+    group: "financial",
+    jsonPath: "pos_monthly",
+    tableRender: true,
+    fields: [
+      { key: "month", label: "Month", type: "text", editable: false, required: true },
+      { key: "gross_aed", label: "Gross (inc tax)", type: "currency", editable: false, required: true },
+      { key: "tax_aed", label: "Tax", type: "currency", editable: false, required: false },
+      { key: "net_aed", label: "Net (ex tax)", type: "currency", editable: false, required: true },
+      { key: "card_aed", label: "Card", type: "currency", editable: false, required: true },
+      { key: "cash_aed", label: "Cash", type: "currency", editable: false, required: false },
+      { key: "seasonality_pct", label: "Seasonality %", type: "percent", editable: false, required: true, note: "Share of annual revenue in this month" },
+    ],
+  },
+  {
+    id: "pos-accounting",
+    label: "POS Accounting Groups",
+    group: "financial",
+    jsonPath: "pos_accounting_groups",
+    tableRender: true,
+    fields: [
+      { key: "group", label: "Group", type: "text", editable: false, required: true },
+      { key: "items", label: "Items Sold", type: "number", editable: false, required: true },
+      { key: "sales_inc_tax", label: "Sales (inc tax)", type: "currency", editable: false, required: true },
+      { key: "pct", label: "% of Revenue", type: "percent", editable: false, required: true },
+    ],
+  },
+  {
+    id: "cogs",
+    label: "COGS",
+    group: "financial",
+    jsonPath: "cogs",
+    fields: [
+      { key: "cogs_aed", label: "COGS (AED)", type: "currency", editable: false, required: true },
+      { key: "cogs_used", label: "Scenario Used", type: "text", editable: true, required: true, note: "low | mid | high" },
+      { key: "gross_profit_aed", label: "Gross Profit", type: "currency", editable: false, required: true },
+      { key: "gp_margin_pct", label: "GP Margin %", type: "percent", editable: false, required: true, policyRef: "2.9 <5% gross margin triggers enhanced review" },
+      { key: "blended_low_pct", label: "Blended COGS (Low) %", type: "percent", editable: true, required: false },
+      { key: "blended_mid_pct", label: "Blended COGS (Mid) %", type: "percent", editable: true, required: false },
+      { key: "blended_high_pct", label: "Blended COGS (High) %", type: "percent", editable: true, required: false },
+    ],
+  },
+  {
+    id: "other-expenses",
+    label: "Other Expenses",
+    group: "financial",
+    jsonPath: "other_expenses",
+    fields: [
+      { key: "lettable_sqm", label: "Lettable Sqm", type: "number", editable: false, required: true, mirroredFrom: "identity.lettable_sqm" },
+      { key: "oe_per_sqm_low", label: "OE per Sqm (Low)", type: "currency", editable: true, required: false },
+      { key: "oe_per_sqm_mid", label: "OE per Sqm (Mid)", type: "currency", editable: true, required: false },
+      { key: "oe_per_sqm_high", label: "OE per Sqm (High)", type: "currency", editable: true, required: false },
+      { key: "annual_oe_low_aed", label: "Annual OE (Low)", type: "currency", editable: false, required: true },
+      { key: "annual_oe_mid_aed", label: "Annual OE (Mid)", type: "currency", editable: false, required: true },
+      { key: "annual_oe_high_aed", label: "Annual OE (High)", type: "currency", editable: false, required: true },
+      { key: "categories", label: "Category Breakdown", type: "text", editable: false, required: true, note: "Array of 6 categories. Render as table." },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // ANALYSIS & OUTPUT (4 sections)
+  // -------------------------------------------------------------------------
+  {
+    id: "pnl",
+    label: "P&L Reconstruction",
+    group: "analysis",
+    jsonPath: "pnl",
+    fields: [
+      { key: "gross_revenue_aed", label: "Gross Revenue", type: "currency", editable: false, required: true },
+      { key: "tax_aed", label: "Tax", type: "currency", editable: false, required: true },
+      { key: "net_revenue_aed", label: "Net Revenue", type: "currency", editable: false, required: true },
+      { key: "cogs_aed", label: "COGS", type: "currency", editable: false, required: true },
+      { key: "cogs_pct", label: "COGS %", type: "percent", editable: false, required: true },
+      { key: "gross_profit_aed", label: "Gross Profit", type: "currency", editable: false, required: true },
+      { key: "gp_margin_pct", label: "GP Margin %", type: "percent", editable: false, required: true },
+      { key: "salary_aed_corrected", label: "Salary (Corrected)", type: "currency", editable: true, required: true, note: "Computed from SPT band. Override here if WPS available." },
+      { key: "salary_pct_corrected", label: "Salary %", type: "percent", editable: false, required: true, policyRef: "2.9 <5% salary triggers enhanced review" },
+      { key: "salary_note", label: "Salary Method", type: "text", editable: false, required: false },
+      { key: "other_expenses_aed", label: "Other Expenses", type: "currency", editable: false, required: true },
+      { key: "other_expenses_basis", label: "OE Basis", type: "text", editable: false, required: true, note: "Which scenario was used: Low / Mid / High" },
+      { key: "rent_aed", label: "Rent", type: "currency", editable: false, required: true, mirroredFrom: "lease.annual_rent_aed" },
+      { key: "ebit_aed_corrected", label: "EBIT (Reconstructed)", type: "currency", editable: false, required: true },
+      { key: "ebit_margin_corrected_pct", label: "EBIT Margin %", type: "percent", editable: false, required: true },
+      { key: "ebit_note", label: "EBIT Note", type: "text", editable: false, required: false },
+      // As-filed values are retained in data but not surfaced by default
+      { key: "ebit_aed_as_filed", label: "EBIT (As Filed)", type: "currency", editable: false, required: false, note: "Merchant's declared figure. Hidden by default — for audit trail." },
+      { key: "ebit_margin_as_filed_pct", label: "EBIT Margin (As Filed) %", type: "percent", editable: false, required: false },
+      { key: "salary_aed_placeholder", label: "Salary (Placeholder)", type: "currency", editable: false, required: false, note: "15% default. Hidden in v1." },
+      { key: "salary_pct_placeholder", label: "Salary % (Placeholder)", type: "percent", editable: false, required: false },
+    ],
+  },
+  {
+    id: "cross-checks",
+    label: "Cross-Checks",
+    group: "analysis",
+    jsonPath: "cross_checks",
+    fields: [
+      { key: "vat_correlation_pct", label: "VAT vs POS Correlation %", type: "percent", editable: false, required: true, policyRef: "2.2 Max 30% discrepancy" },
+      { key: "vat_verdict", label: "VAT Verdict", type: "text", editable: false, required: true },
+      { key: "tl_status", label: "Trade Licence Status", type: "text", editable: false, required: true },
+      { key: "tl_days_expired", label: "TL Days Expired", type: "number", editable: false, required: true, note: "Positive = expired by N days. Hard disbursement block per policy." },
+      { key: "tl_flag", label: "TL Flag", type: "text", editable: false, required: true },
+      { key: "affiliated_parties", label: "Affiliated Parties", type: "text", editable: false, required: true, note: "Nested: operator_group, concentration_risk, group_venues_in_library." },
+      { key: "march_2025_closure", label: "March 2025 Closure", type: "text", editable: false, required: false, note: "Nested investigation: verdict, reduction_pct, actual vs modelled." },
+      { key: "pos_system_mismatch", label: "POS System Check", type: "text", editable: false, required: false, note: "Nested: verdict, format detected vs original entry." },
+    ],
+  },
+  {
+    id: "scoring-engine",
+    label: "Scoring Engine Output",
+    group: "analysis",
+    jsonPath: "credit_score",
+    fields: [
+      // Headline
+      { key: "total_score", label: "Mezza Score", type: "number", editable: false, required: true },
+      { key: "grade", label: "Grade", type: "text", editable: false, required: true, policyRef: "2.3 Risk Rating Structure" },
+      { key: "grade_label", label: "Grade Label", type: "text", editable: false, required: true },
+      { key: "facility_type", label: "Facility Type", type: "text", editable: false, required: true },
+      // Components
+      { key: "financial_health_score", label: "Financial Health Score", type: "number", editable: false, required: true },
+      { key: "financial_health_grade", label: "Financial Health Grade", type: "text", editable: false, required: true },
+      { key: "restaurant_profile_score", label: "Restaurant Profile Score", type: "number", editable: false, required: true },
+      { key: "restaurant_profile_grade", label: "Restaurant Profile Grade", type: "text", editable: false, required: true },
+      // Ceilings — 4 tiers per policy
+      { key: "ceiling_used_aed", label: "Ceiling (Used)", type: "currency", editable: false, required: true, policyRef: "2.3 Max exposure by grade" },
+      { key: "ceiling_basis", label: "Ceiling Basis", type: "text", editable: false, required: true },
+      { key: "ceiling_pilot_aed", label: "Pilot Ceiling (20%)", type: "currency", editable: false, required: true, policyRef: "2.5 Pilot capped at 20%" },
+      { key: "ceiling_conservative_aed", label: "Conservative Ceiling (1%)", type: "currency", editable: false, required: false },
+      { key: "ceiling_moderate_aed", label: "Moderate Ceiling (3%)", type: "currency", editable: false, required: false },
+      { key: "ceiling_aggressive_aed", label: "Aggressive Ceiling (5%)", type: "currency", editable: false, required: false },
+      { key: "ceiling_risk_category_aed", label: "Risk Category Ceiling", type: "currency", editable: false, required: false },
+      // Flags
+      { key: "green_flags", label: "Green Flags", type: "number", editable: false, required: false },
+      { key: "red_flags", label: "Red Flags", type: "number", editable: false, required: false },
+      { key: "auto_approve_count", label: "Auto-Approve Hits", type: "number", editable: false, required: false },
+      { key: "auto_reject_count", label: "Auto-Reject Hits", type: "number", editable: false, required: true, note: "If >0, requires committee override per policy 4.1." },
+      // Inputs (mirrored from other sections — read-only here)
+      { key: "ltm_revenue_aed", label: "LTM Revenue", type: "currency", editable: false, required: true, mirroredFrom: "pos_headline.net_revenue_ex_tax" },
+      { key: "years_operational", label: "Years Operational", type: "number", editable: false, required: true, mirroredFrom: "trade_licence.years_operational" },
+      { key: "card_share_pct", label: "Card Share %", type: "percent", editable: false, required: true, mirroredFrom: "pos_headline.card_share_pct" },
+      { key: "rent_to_revenue_pct", label: "Rent / Revenue %", type: "percent", editable: false, required: true },
+      { key: "salary_to_revenue_pct", label: "Salary / Revenue %", type: "percent", editable: false, required: true },
+      { key: "avg_spt_aed", label: "Avg SPT", type: "currency", editable: false, required: true, mirroredFrom: "pos_headline.avg_spend_per_order_spt_aed" },
+      { key: "next_12m_ebit_pct", label: "Next 12M EBIT %", type: "percent", editable: false, required: false },
+      { key: "vat_corroboration_pct", label: "VAT Corroboration (scored)", type: "percent", editable: false, required: false, note: "Scored variant of vat_vs_pos_correlation_pct" },
+      // Nested arrays — rendered as tables
+      { key: "score_breakdown", label: "Score Breakdown (10)", type: "text", editable: false, required: true, note: "Array of {category, score, max, note}. Render as table." },
+      { key: "outstanding_queries", label: "Outstanding Queries (6)", type: "text", editable: false, required: true, note: "Array of {query, priority}. Render as priority-sorted list." },
+    ],
+  },
+  {
+    id: "policy-checks",
+    label: "Policy Compliance",
+    group: "analysis",
+    jsonPath: "", // computed at render time — not from extracted_json
+    fields: [
+      // Hard requirements from policy 2.2
+      { key: "location_uae", label: "Location: UAE", type: "boolean", editable: false, required: true, policyRef: "2.2 Location required: UAE" },
+      { key: "min_turnover_2_5m", label: "Min Turnover ≥ AED 2.5M", type: "boolean", editable: false, required: true, policyRef: "2.2 Min AED 2,500,000 LTM" },
+      { key: "min_operational_12m", label: "Min 12 Months Operational", type: "boolean", editable: false, required: true, policyRef: "2.2 / 2.5" },
+      { key: "vat_registered", label: "VAT Registered", type: "boolean", editable: false, required: true, policyRef: "2.2 Registered for VAT required" },
+      { key: "tl_active", label: "Trade Licence Active", type: "boolean", editable: false, required: true, policyRef: "2.2 Active TL required" },
+      { key: "ejari_active", label: "Ejari Active", type: "boolean", editable: false, required: true, policyRef: "2.2 Up-to-date Ejari" },
+      { key: "cashless_pct_50", label: "Cashless ≥ 50%", type: "boolean", editable: false, required: true, policyRef: "2.2 Min 50% cashless" },
+      // Discrepancy check
+      { key: "vat_discrepancy_under_30", label: "VAT vs POS Discrepancy ≤ 30%", type: "boolean", editable: false, required: true, policyRef: "2.2 Max 30% discrepancy" },
+      // Enhanced review triggers (policy 2.9)
+      { key: "gp_margin_over_5", label: "GP Margin ≥ 5%", type: "boolean", editable: false, required: true, policyRef: "2.9 Minimal Value Added trigger" },
+      { key: "salary_over_5", label: "Salary ≥ 5% of Revenue", type: "boolean", editable: false, required: true, policyRef: "2.9 Minimal Value Added trigger" },
+      { key: "cash_intensity_under_50", label: "Cash Intensity < 50%", type: "boolean", editable: false, required: true, policyRef: "2.9 Cash intensity flag" },
+      // Score gate
+      { key: "score_over_50", label: "Score ≥ 50", type: "boolean", editable: false, required: true, policyRef: "2.10 Score < 50 = rejection" },
+      // Credit history (manualFill until AECB integrated)
+      { key: "returned_cheques_3m_under_2", label: "Returned Cheques (3m) ≤ 1", type: "boolean", editable: true, required: true, manualFill: true, policyRef: "2.2 Max 1 in 3m" },
+      { key: "returned_cheques_6m_under_3", label: "Returned Cheques (6m) ≤ 2", type: "boolean", editable: true, required: true, manualFill: true, policyRef: "2.2 Max 2 in 6m" },
+      { key: "returned_cheques_12m_under_5", label: "Returned Cheques (12m) ≤ 4", type: "boolean", editable: true, required: true, manualFill: true, policyRef: "2.2 Max 4 in 12m" },
+      { key: "unpaid_cheques_12m_zero", label: "Unpaid Cheques (12m) = 0", type: "boolean", editable: true, required: true, manualFill: true, policyRef: "2.2 Zero tolerance" },
+      { key: "active_legal_cases_zero", label: "Active Legal Cases = 0", type: "boolean", editable: true, required: true, manualFill: true, policyRef: "2.2 Zero tolerance" },
+      { key: "missed_payments_3m_under_2", label: "Missed Payments (3m) ≤ 1", type: "boolean", editable: true, required: true, manualFill: true, policyRef: "2.2 Max 1 in 3m" },
+    ],
+  },
+];
+
+// Section lookup map — used by the page for hash-based navigation and mirrors
+export const SECTIONS_BY_ID = Object.fromEntries(
+  DATA_BANK_SECTIONS.map((s) => [s.id, s]),
+);

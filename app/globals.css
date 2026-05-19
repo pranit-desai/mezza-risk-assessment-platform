@@ -1,37 +1,224 @@
-@import "tailwindcss";
+/* ============================================================
+   MEZZA DESIGN SYSTEM — Scheme A Warm Graphite
+   ============================================================
+   Page:  #1c1917 (warm dark brown-black)
+   Cards: #000000 (pure black — contrast pop)
+   Accent: #ff6b35 coral · #ffba8a peach for sub-headers
+
+   Source of truth: every page consumes these tokens via var().
+   Never hardcode a color in a component — extend this file instead.
+   ============================================================ */
 
 :root {
-  --mz-bg: #07111f;
-  --mz-sidebar: #040d18;
-  --mz-card: #0d1929;
-  --mz-accent: #00c49f;
-  --mz-text: #dce8f5;
-  --mz-muted: #7d8fa6;
-  --mz-border: rgba(255, 255, 255, 0.07);
+  /* ─── BACKGROUNDS ───────────────────────────────── */
+  --mz-page:           #1c1917;     /* warm graphite */
+  --mz-card:           #000000;     /* pure black */
+  --mz-card-nested:    #0a0a0a;     /* one notch up from card for inputs */
+  --mz-card-subtle:    #050505;     /* hover-on-card */
 
-  --mz-green-bg: rgba(16, 185, 129, 0.1);
-  --mz-green-border: rgba(16, 185, 129, 0.1);
-  --mz-green-text: #6ee7b7;
+  /* ─── ACCENT (coral) ────────────────────────────── */
+  --mz-accent:         #ff6b35;     /* primary coral — selected state */
+  --mz-accent-light:   #ff8e53;     /* lighter — hover state */
+  --mz-accent-peach:   #ffba8a;     /* peach — sub-section titles */
+  --mz-accent-06:      rgba(255, 107, 53, 0.06);
+  --mz-accent-08:      rgba(255, 107, 53, 0.08);
+  --mz-accent-12:      rgba(255, 107, 53, 0.12);
+  --mz-accent-15:      rgba(255, 107, 53, 0.15);
+  --mz-accent-25:      rgba(255, 107, 53, 0.25);
+  --mz-accent-40:      rgba(255, 107, 53, 0.40);
 
-  --mz-amber-bg: rgba(245, 158, 11, 0.1);
-  --mz-amber-border: rgba(245, 158, 11, 0.1);
-  --mz-amber-text: #fbbf24;
+  /* ─── TEXT ──────────────────────────────────────── */
+  --mz-text:           #f5f0e8;     /* warm off-white — never pure white */
+  --mz-text-on-page:   #f5f0e8;     /* same on warm graphite page */
+  --mz-muted:          #8b8276;     /* secondary text */
+  --mz-muted-on-page:  #8b8276;
 
-  --mz-red-bg: rgba(239, 68, 68, 0.1);
-  --mz-red-border: rgba(239, 68, 68, 0.1);
-  --mz-red-text: #fca5a5;
+  /* ─── BORDERS ───────────────────────────────────── */
+  --mz-border:         rgba(255, 255, 255, 0.06);  /* card borders, subtle */
+  --mz-border-soft:    rgba(255, 255, 255, 0.05);
+  --mz-border-subtle:  rgba(255, 255, 255, 0.03);
+  --mz-border-input:   rgba(255, 255, 255, 0.12);  /* idle clickable border */
+  --mz-border-on-page: rgba(255, 107, 53, 0.18);   /* divider on graphite */
 
-  --mz-purple: #6366f1;
+  /* ─── SEVERITY TIERS — 7-tier (NOT 5-tier) ──────── */
+  --mz-tier-excellent-plus:  #00c86e;    /* 90+ */
+  --mz-tier-excellent:       #2ecc71;    /* 80–89 */
+  --mz-tier-above-avg:       #52c8b0;    /* 70–79 */
+  --mz-tier-average:         #d4a800;    /* 60–69 */
+  --mz-tier-below-avg:       #e08800;    /* 50–59 */
+  --mz-tier-poor:            #d45a00;    /* 25–49 */
+  --mz-tier-critical:        #d43030;    /* <25 */
+
+  /* ─── DECISION COLORS ───────────────────────────── */
+  --mz-decision-approved:    #00c86e;
+  --mz-decision-rejected:    #d43030;
+  --mz-decision-pending:     #8b8276;
+
+  /* ─── PIPELINE TIERS ────────────────────────────── */
+  --mz-pilot:                #00c86e;
+  --mz-p1:                   #e08800;
+  --mz-p2:                   #d43030;
+
+  /* ─── BADGE COLORS (Data Bank completeness) ─────── */
+  --mz-green-bg:       rgba(0, 200, 110, 0.14);
+  --mz-green-border:   rgba(0, 200, 110, 0.4);
+  --mz-green-text:     #00c86e;
+  --mz-amber-bg:       rgba(212, 168, 0, 0.14);
+  --mz-amber-border:   rgba(212, 168, 0, 0.4);
+  --mz-amber-text:     #d4a800;
+  --mz-red-bg:         rgba(212, 48, 48, 0.14);
+  --mz-red-border:     rgba(212, 48, 48, 0.4);
+  --mz-red-text:       #d43030;
+
+  /* ─── ANALYTICS CHART PALETTE ───────────────────── */
+  --mz-chart-1:        #ff6b35;
+  --mz-chart-2:        #00c86e;
+  --mz-chart-3:        #2ecc71;
+  --mz-chart-4:        #52c8b0;
+  --mz-chart-5:        #d4a800;
+  --mz-chart-6:        #e08800;
+  --mz-chart-7:        #d43030;
+  --mz-chart-8:        #8b5cf6;
+  --mz-chart-9:        #3b82f6;
+  --mz-chart-10:       #ec4899;
+
+  /* ─── SPECIAL ───────────────────────────────────── */
+  --mz-ai-accent:      #8b5cf6;     /* AI Import purple */
+
+  /* ─── SHAPE & SIZE ──────────────────────────────── */
+  --mz-radius-sm:      6px;
+  --mz-radius-md:      8px;
+  --mz-radius-lg:      10px;
+  --mz-radius-xl:      14px;
+
+  /* ─── TYPE SCALE ────────────────────────────────── */
+  --mz-font-sans:      'DM Sans', system-ui, -apple-system, sans-serif;
+  --mz-font-mono:      'DM Mono', 'SF Mono', 'Consolas', monospace;
+
+  --mz-fs-stat:        32px;     /* huge stat numbers */
+  --mz-fs-h1:          26px;     /* page titles */
+  --mz-fs-h2:          18px;     /* section titles */
+  --mz-fs-h3:          15px;     /* sub-section / card titles */
+  --mz-fs-body:        13px;
+  --mz-fs-sm:          12px;
+  --mz-fs-xs:          11px;
+  --mz-fs-xxs:         10px;
 }
 
-html,
-body {
-  background-color: var(--mz-bg);
-  color: var(--mz-text);
-  font-family: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
+/* ============================================================
+   GLOBAL RESET & BASE
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--mz-page);
+  color: var(--mz-text-on-page);
+  font-family: var(--mz-font-sans);
+  font-size: var(--mz-fs-body);
+  font-weight: 500;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   UTILITY CLASSES (referenced by every page)
+   ============================================================ */
+
+/* Monospace numerals — use on AED amounts, scores, dates */
 .mz-mono {
-  font-family: var(--font-dm-mono), ui-monospace, monospace;
-  font-feature-settings: "tnum" 1;
+  font-family: var(--mz-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Eyebrow (small caps coral label above a section title) */
+.mz-eyebrow {
+  font-size: var(--mz-fs-xxs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--mz-accent);
+}
+
+/* Sub-section title (peach — adds personality to dense data screens) */
+.mz-subheader {
+  font-size: var(--mz-fs-h3);
+  font-weight: 500;
+  color: var(--mz-accent-peach);
+}
+
+/* Standard dark card */
+.mz-card {
+  background: var(--mz-card);
+  border: 1px solid var(--mz-border);
+  border-radius: var(--mz-radius-lg);
+  padding: 16px 18px;
+  color: var(--mz-text);
+}
+
+/* ============================================================
+   INTERACTION STATES — applied via .mz-clickable
+   Every clickable element (button, nav, sub-nav, edit pencil)
+   gets these states for free by adding className="mz-clickable"
+   ============================================================ */
+
+.mz-clickable {
+  background: transparent;
+  border: 1px solid var(--mz-border-input);
+  color: var(--mz-muted);
+  border-radius: var(--mz-radius-md);
+  font-family: var(--mz-font-sans);
+  font-size: var(--mz-fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  text-decoration: none;
+}
+
+.mz-clickable:hover {
+  background: var(--mz-accent-08);
+  border-color: var(--mz-accent-25);
+  color: var(--mz-accent-light);
+}
+
+.mz-clickable:active,
+.mz-clickable[aria-pressed="true"],
+.mz-clickable.active {
+  background: var(--mz-accent-15);
+  border-color: var(--mz-accent-40);
+  color: var(--mz-accent);
+}
+
+/* Plain anchor links (when not given .mz-clickable) */
+a {
+  color: var(--mz-text);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+a:hover { color: var(--mz-accent-light); }
+a:active, a.active { color: var(--mz-accent); }
+
+/* Form inputs on dark cards */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+  background: var(--mz-card-nested);
+  border: 1px solid var(--mz-border-input);
+  color: var(--mz-text);
+  font-family: var(--mz-font-sans);
+  font-size: var(--mz-fs-sm);
+  padding: 6px 10px;
+  border-radius: var(--mz-radius-sm);
+  transition: border-color 0.15s ease;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--mz-accent-40);
 }

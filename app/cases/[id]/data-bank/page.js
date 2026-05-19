@@ -11,9 +11,6 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-// ---------------------------------------------------------------------------
-// Path / value helpers
-// ---------------------------------------------------------------------------
 function getByPath(obj, path) {
   if (!obj || !path) return undefined;
   return path.split(".").reduce((acc, key) => {
@@ -22,7 +19,6 @@ function getByPath(obj, path) {
   }, obj);
 }
 
-// Resolve a "section_id.field_key" mirror reference against the full extracted_json
 function resolveMirror(mirroredFrom, extracted) {
   if (!mirroredFrom) return undefined;
   const [sectionId, fieldKey] = mirroredFrom.split(".");
@@ -32,12 +28,8 @@ function resolveMirror(mirroredFrom, extracted) {
   return sectionData[fieldKey];
 }
 
-// ---------------------------------------------------------------------------
-// Formatting
-// ---------------------------------------------------------------------------
 function formatValue(value, type) {
   if (value === null || value === undefined || value === "") return "—";
-
   switch (type) {
     case "currency":
       return `AED ${Number(value).toLocaleString("en-AE", { maximumFractionDigits: 2 })}`;
@@ -48,38 +40,28 @@ function formatValue(value, type) {
     case "date": {
       const d = new Date(value);
       if (Number.isNaN(d.getTime())) return String(value);
-      return d.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
+      return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     }
     case "boolean":
       return value ? "Yes" : "No";
     case "text":
+    case "enum":
     default:
       return String(value);
   }
 }
 
-// ---------------------------------------------------------------------------
-// Completeness computation
-// ---------------------------------------------------------------------------
 function computeCompleteness(section, extracted) {
   const data = getByPath(extracted, section.jsonPath);
-
   if (data === undefined || data === null) return "missing";
   if (typeof data === "object" && data.error) return "failed";
   if (typeof data !== "object") return "failed";
-
-  const requiredFields = section.fields.filter((f) => f.required);
+  const requiredFields = (section.fields || []).filter((f) => f.required);
   if (requiredFields.length === 0) return "complete";
-
   const missing = requiredFields.filter((f) => {
-    const v = data[f.key];
+    const v = Array.isArray(data) ? undefined : data[f.key];
     return v === undefined || v === null || v === "";
   });
-
   if (missing.length === 0) return "complete";
   if (missing.length === requiredFields.length) return "missing";
   return "partial";
@@ -95,11 +77,7 @@ function badgeStyle(completeness) {
       return { bg: "var(--mz-red-bg)", border: "var(--mz-red-border)", color: "var(--mz-red-text)" };
     case "missing":
     default:
-      return {
-        bg: "rgba(255, 255, 255, 0.04)",
-        border: "var(--mz-border)",
-        color: "var(--mz-muted)",
-      };
+      return { bg: "rgba(255,255,255,0.04)", border: "var(--mz-border-input)", color: "var(--mz-muted)" };
   }
 }
 
@@ -110,9 +88,6 @@ const COMPLETENESS_LABEL = {
   failed: "Failed",
 };
 
-// ---------------------------------------------------------------------------
-// Main page
-// ---------------------------------------------------------------------------
 export default function DataBankPage() {
   const params = useParams();
   const caseId = params?.id;
@@ -120,17 +95,13 @@ export default function DataBankPage() {
   const [caseData, setCaseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeSectionId, setActiveSectionId] = useState(
-    DATA_BANK_SECTIONS[0].id,
-  );
+  const [activeSectionId, setActiveSectionId] = useState(DATA_BANK_SECTIONS[0].id);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch(`${API_BASE_URL}/cases/${caseId}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`${API_BASE_URL}/cases/${caseId}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to fetch case: ${res.status}`);
       const data = await res.json();
       setCaseData(data);
@@ -145,15 +116,12 @@ export default function DataBankPage() {
     if (caseId) load();
   }, [caseId, load]);
 
-  // Reload the case after a successful override (cheaper than mutating local state
-  // because the backend may have side effects we want reflected exactly)
   const onOverrideSaved = useCallback((updatedCase) => {
     setCaseData(updatedCase);
   }, []);
 
   const extracted = caseData?.extracted_json || {};
 
-  // Group sections for the sub-nav
   const sectionsByGroup = useMemo(() => {
     const map = new Map();
     for (const g of DATA_BANK_GROUPS) map.set(g.id, []);
@@ -166,27 +134,31 @@ export default function DataBankPage() {
   const activeSection = SECTIONS_BY_ID[activeSectionId];
 
   if (loading) {
-    return (
-      <div className="px-8 py-8 text-sm text-[color:var(--mz-muted)]">
-        Loading data bank...
-      </div>
-    );
+    return <div style={{ padding: "28px 24px", color: "var(--mz-muted)" }}>Loading data bank...</div>;
   }
 
   if (error) {
     return (
-      <div className="px-8 py-8">
+      <div style={{ padding: "28px 24px" }}>
         <Link
           href={`/cases/${caseId}`}
-          className="mb-6 inline-block text-xs uppercase tracking-widest text-[color:var(--mz-muted)] hover:text-[color:var(--mz-accent)]"
+          style={{
+            color: "var(--mz-muted)",
+            fontSize: "var(--mz-fs-xs)",
+            textTransform: "uppercase",
+            letterSpacing: 1.5,
+            fontWeight: 700,
+          }}
         >
           ← Back to Case File
         </Link>
         <div
-          className="rounded-xl border p-4 text-sm"
           style={{
-            backgroundColor: "var(--mz-red-bg)",
-            borderColor: "var(--mz-red-border)",
+            marginTop: 20,
+            padding: 16,
+            borderRadius: "var(--mz-radius-md)",
+            background: "var(--mz-red-bg)",
+            border: "1px solid var(--mz-red-border)",
             color: "var(--mz-red-text)",
           }}
         >
@@ -199,44 +171,50 @@ export default function DataBankPage() {
   if (!caseData) return null;
 
   return (
-    <div className="px-8 py-8">
+    <div style={{ padding: "28px 24px" }}>
       <Link
         href={`/cases/${caseId}`}
-        className="mb-6 inline-block text-xs uppercase tracking-widest text-[color:var(--mz-muted)] hover:text-[color:var(--mz-accent)]"
+        style={{
+          color: "var(--mz-muted)",
+          fontSize: "var(--mz-fs-xs)",
+          textTransform: "uppercase",
+          letterSpacing: 1.5,
+          fontWeight: 700,
+        }}
       >
         ← Back to Case File
       </Link>
 
-      <div className="mb-6">
-        <div className="text-xs uppercase tracking-widest text-[color:var(--mz-accent)]">
-          Data Bank · {caseData.case_ref}
-        </div>
-        <h1 className="mt-2 text-3xl font-semibold text-[color:var(--mz-text)]">
+      <div style={{ marginTop: 18, marginBottom: 22 }}>
+        <div className="mz-eyebrow mz-mono">Data Bank · {caseData.case_ref}</div>
+        <h1
+          style={{
+            fontSize: "var(--mz-fs-h1)",
+            fontWeight: 900,
+            color: "var(--mz-text-on-page)",
+            margin: 0,
+            marginTop: 6,
+            letterSpacing: "-0.3px",
+          }}
+        >
           {caseData.venue_name}
         </h1>
-        <p className="mt-2 text-sm text-[color:var(--mz-muted)]">
-          Extracted and reasoned data. Click a field's pencil icon to override.
+        <p className="mz-subheader" style={{ margin: 0, marginTop: 6 }}>
+          Extracted and reasoned data. Click a field&apos;s pencil icon to override.
         </p>
       </div>
 
-      <div className="flex gap-6">
-        {/* Inner sub-nav */}
-        <aside
-          className="w-64 shrink-0 rounded-2xl border p-4"
-          style={{
-            backgroundColor: "var(--mz-card)",
-            borderColor: "var(--mz-border)",
-          }}
-        >
+      <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+        <aside className="mz-card" style={{ width: 260, flexShrink: 0, padding: 14 }}>
           {DATA_BANK_GROUPS.map((group) => {
             const sections = sectionsByGroup.get(group.id) || [];
             if (sections.length === 0) return null;
             return (
-              <div key={group.id} className="mb-4 last:mb-0">
-                <div className="mb-2 px-2 text-xs uppercase tracking-widest text-[color:var(--mz-muted)]">
+              <div key={group.id} style={{ marginBottom: 14 }}>
+                <div className="mz-eyebrow" style={{ padding: "0 6px", marginBottom: 6 }}>
                   {group.label}
                 </div>
-                <div className="space-y-1">
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   {sections.map((section) => {
                     const completeness = computeCompleteness(section, extracted);
                     const badge = badgeStyle(completeness);
@@ -245,21 +223,26 @@ export default function DataBankPage() {
                       <button
                         key={section.id}
                         onClick={() => setActiveSectionId(section.id)}
-                        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition"
+                        className={`mz-clickable ${isActive ? "active" : ""}`}
                         style={{
-                          backgroundColor: isActive
-                            ? "rgba(0, 196, 159, 0.08)"
-                            : "transparent",
-                          color: isActive
-                            ? "var(--mz-accent)"
-                            : "var(--mz-text)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "8px 10px",
+                          textAlign: "left",
+                          border: "1px solid transparent",
                         }}
                       >
                         <span>{section.label}</span>
                         <span
-                          className="h-2 w-2 rounded-full"
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            background: badge.color,
+                            flexShrink: 0,
+                          }}
                           title={COMPLETENESS_LABEL[completeness]}
-                          style={{ backgroundColor: badge.color }}
                         />
                       </button>
                     );
@@ -270,8 +253,7 @@ export default function DataBankPage() {
           })}
         </aside>
 
-        {/* Section content */}
-        <main className="flex-1 min-w-0">
+        <main style={{ flex: 1, minWidth: 0 }}>
           {activeSection && (
             <SectionView
               section={activeSection}
@@ -286,49 +268,69 @@ export default function DataBankPage() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// SectionView — renders one section's fields
-// ---------------------------------------------------------------------------
 function SectionView({ section, caseId, extracted, onOverrideSaved }) {
   const sectionData = getByPath(extracted, section.jsonPath) || {};
   const completeness = computeCompleteness(section, extracted);
   const badge = badgeStyle(completeness);
 
   return (
-    <div
-      className="rounded-2xl border p-6"
-      style={{
-        backgroundColor: "var(--mz-card)",
-        borderColor: "var(--mz-border)",
-      }}
-    >
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mz-card">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 18,
+        }}
+      >
         <div>
-          <h2 className="text-xl font-semibold text-[color:var(--mz-text)]">
+          <div className="mz-eyebrow" style={{ marginBottom: 4 }}>
+            {section.group}
+          </div>
+          <h2
+            style={{
+              fontSize: "var(--mz-fs-h2)",
+              fontWeight: 500,
+              color: "var(--mz-accent-peach)",
+              margin: 0,
+            }}
+          >
             {section.label}
           </h2>
-          <p className="mt-1 text-xs text-[color:var(--mz-muted)]">
+          <p
+            className="mz-mono"
+            style={{
+              fontSize: "var(--mz-fs-xs)",
+              color: "var(--mz-muted)",
+              margin: 0,
+              marginTop: 4,
+            }}
+          >
             extracted_json.{section.jsonPath}
           </p>
         </div>
         <span
-          className="rounded-full border px-3 py-1 text-xs"
           style={{
-            backgroundColor: badge.bg,
-            borderColor: badge.border,
+            padding: "4px 12px",
+            borderRadius: 999,
+            background: badge.bg,
+            border: "1px solid " + badge.border,
             color: badge.color,
+            fontSize: "var(--mz-fs-xs)",
+            fontWeight: 500,
           }}
         >
           {COMPLETENESS_LABEL[completeness]}
         </span>
       </div>
 
-      <div className="divide-y" style={{ borderColor: "var(--mz-border)" }}>
-        {section.fields.map((field) => {
+      <div>
+        {(section.fields || []).map((field) => {
           const rawValue = field.mirroredFrom
             ? resolveMirror(field.mirroredFrom, extracted)
-            : sectionData[field.key];
-
+            : Array.isArray(sectionData)
+              ? undefined
+              : sectionData[field.key];
           return (
             <FieldRow
               key={field.key}
@@ -336,8 +338,8 @@ function SectionView({ section, caseId, extracted, onOverrideSaved }) {
               value={rawValue}
               caseId={caseId}
               fieldPath={
-                field.mirroredFrom
-                  ? null // mirrored fields never become editable here
+                field.mirroredFrom || section.listOf || Array.isArray(sectionData)
+                  ? null
                   : `${section.jsonPath}.${field.key}`
               }
               onOverrideSaved={onOverrideSaved}
@@ -349,9 +351,6 @@ function SectionView({ section, caseId, extracted, onOverrideSaved }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// FieldRow — one row, optionally editable
-// ---------------------------------------------------------------------------
 function FieldRow({ field, value, caseId, fieldPath, onOverrideSaved }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -362,13 +361,9 @@ function FieldRow({ field, value, caseId, fieldPath, onOverrideSaved }) {
 
   function startEdit() {
     setRowError("");
-    if (field.type === "boolean") {
-      setDraft(value ? "true" : "false");
-    } else if (value === null || value === undefined) {
-      setDraft("");
-    } else {
-      setDraft(String(value));
-    }
+    if (field.type === "boolean") setDraft(value ? "true" : "false");
+    else if (value === null || value === undefined) setDraft("");
+    else setDraft(String(value));
     setEditing(true);
   }
 
@@ -379,7 +374,6 @@ function FieldRow({ field, value, caseId, fieldPath, onOverrideSaved }) {
   }
 
   function coerceDraft() {
-    // Convert the string draft to the right JS type before sending to the API
     const raw = draft.trim();
     if (raw === "") return null;
     switch (field.type) {
@@ -387,15 +381,14 @@ function FieldRow({ field, value, caseId, fieldPath, onOverrideSaved }) {
       case "currency":
       case "percent": {
         const n = Number(raw);
-        if (Number.isNaN(n)) {
-          throw new Error("Must be a number");
-        }
+        if (Number.isNaN(n)) throw new Error("Must be a number");
         return n;
       }
       case "boolean":
         return raw === "true" || raw === "yes" || raw === "1";
       case "date":
       case "text":
+      case "enum":
       default:
         return raw;
     }
@@ -413,35 +406,24 @@ function FieldRow({ field, value, caseId, fieldPath, onOverrideSaved }) {
       setSaving(false);
       return;
     }
-
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/cases/${caseId}/extracted-field`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            field_path: fieldPath,
-            old_value: value === undefined ? null : value,
-            new_value: newValue,
-            changed_by: "Pranit",
-          }),
-        },
-      );
-
+      const res = await fetch(`${API_BASE_URL}/cases/${caseId}/extracted-field`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          field_path: fieldPath,
+          old_value: value === undefined ? null : value,
+          new_value: newValue,
+          changed_by: "Pranit",
+        }),
+      });
       if (res.status === 409) {
         const body = await res.json().catch(() => ({}));
-        setRowError(
-          `Conflict: current value is "${body.detail?.current_value ?? "?"}". Click Cancel and reopen.`,
-        );
+        setRowError(`Conflict: current value is "${body.detail?.current_value ?? "?"}". Click Cancel and reopen.`);
         setSaving(false);
         return;
       }
-
-      if (!res.ok) {
-        throw new Error(`Save failed: ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`Save failed: ${res.status}`);
       const updatedCase = await res.json();
       onOverrideSaved(updatedCase);
       setEditing(false);
@@ -453,44 +435,46 @@ function FieldRow({ field, value, caseId, fieldPath, onOverrideSaved }) {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 py-3">
-      <div className="col-span-4 flex items-center text-sm text-[color:var(--mz-muted)]">
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "5fr 6fr 1fr",
+        gap: 16,
+        padding: "12px 0",
+        borderBottom: "1px solid var(--mz-border-soft)",
+        alignItems: "center",
+      }}
+    >
+      <div style={{ fontSize: "var(--mz-fs-sm)", color: "var(--mz-muted)", display: "flex", alignItems: "center" }}>
         {field.label}
         {field.required && (
-          <span
-            className="ml-2 text-xs"
-            style={{ color: "var(--mz-amber-text)" }}
-          >
-            *
-          </span>
+          <span style={{ marginLeft: 6, fontSize: "var(--mz-fs-xs)", color: "var(--mz-amber-text)" }}>*</span>
         )}
       </div>
 
-      <div className="col-span-7 flex items-center">
+      <div style={{ display: "flex", alignItems: "center" }}>
         {editing ? (
-          <div className="flex w-full items-center gap-2">
+          <div style={{ display: "flex", gap: 8, width: "100%", alignItems: "center" }}>
             {field.type === "boolean" ? (
-              <select
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                className="rounded border bg-transparent px-2 py-1 text-sm"
-                style={{
-                  borderColor: "var(--mz-border)",
-                  color: "var(--mz-text)",
-                }}
-                autoFocus
-              >
+              <select value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus>
                 <option value="true">Yes</option>
                 <option value="false">No</option>
+              </select>
+            ) : field.type === "enum" && Array.isArray(field.options) ? (
+              <select value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus>
+                <option value="">— select —</option>
+                {field.options.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
               </select>
             ) : (
               <input
                 type={
-                  field.type === "number" ||
-                  field.type === "currency" ||
-                  field.type === "percent"
+                  field.type === "number" || field.type === "currency" || field.type === "percent"
                     ? "number"
-                    : "text"
+                    : field.type === "date"
+                      ? "date"
+                      : "text"
                 }
                 step="any"
                 value={draft}
@@ -499,66 +483,52 @@ function FieldRow({ field, value, caseId, fieldPath, onOverrideSaved }) {
                   if (e.key === "Enter") save();
                   if (e.key === "Escape") cancelEdit();
                 }}
-                className="w-full rounded border bg-transparent px-2 py-1 text-sm mz-mono"
-                style={{
-                  borderColor: "var(--mz-border)",
-                  color: "var(--mz-text)",
-                }}
                 autoFocus
+                className="mz-mono"
+                style={{ flex: 1 }}
               />
             )}
             <button
               onClick={save}
               disabled={saving}
-              className="rounded border px-2 py-1 text-xs disabled:opacity-40"
-              style={{
-                backgroundColor: "rgba(0, 196, 159, 0.1)",
-                borderColor: "var(--mz-accent)",
-                color: "var(--mz-accent)",
-              }}
+              className="mz-clickable active"
+              style={{ padding: "6px 12px" }}
             >
               {saving ? "Saving..." : "Save"}
             </button>
             <button
               onClick={cancelEdit}
               disabled={saving}
-              className="rounded border px-2 py-1 text-xs disabled:opacity-40"
-              style={{
-                borderColor: "var(--mz-border)",
-                color: "var(--mz-muted)",
-              }}
+              className="mz-clickable"
+              style={{ padding: "6px 12px" }}
             >
               Cancel
             </button>
           </div>
         ) : (
-          <span
-            className="mz-mono text-sm"
-            style={{ color: "var(--mz-text)" }}
-          >
+          <span className="mz-mono" style={{ fontSize: "var(--mz-fs-sm)", color: "var(--mz-text)" }}>
             {formatValue(value, field.type)}
             {field.mirroredFrom && (
-              <span
-                className="ml-2 text-xs"
-                style={{ color: "var(--mz-muted)" }}
-              >
+              <span style={{ marginLeft: 8, fontSize: "var(--mz-fs-xs)", color: "var(--mz-muted)" }}>
                 (mirrored)
+              </span>
+            )}
+            {field.manualFill && value === undefined && (
+              <span style={{ marginLeft: 8, fontSize: "var(--mz-fs-xs)", color: "var(--mz-amber-text)" }}>
+                (enter manually)
               </span>
             )}
           </span>
         )}
       </div>
 
-      <div className="col-span-1 flex items-center justify-end">
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
         {canEdit && !editing && (
           <button
             onClick={startEdit}
             title="Edit"
-            className="rounded border px-2 py-1 text-xs hover:opacity-80"
-            style={{
-              borderColor: "var(--mz-border)",
-              color: "var(--mz-muted)",
-            }}
+            className="mz-clickable"
+            style={{ padding: "4px 10px" }}
           >
             ✎
           </button>
@@ -567,8 +537,12 @@ function FieldRow({ field, value, caseId, fieldPath, onOverrideSaved }) {
 
       {rowError && (
         <div
-          className="col-span-12 text-xs"
-          style={{ color: "var(--mz-red-text)" }}
+          style={{
+            gridColumn: "1 / -1",
+            fontSize: "var(--mz-fs-xs)",
+            color: "var(--mz-red-text)",
+            marginTop: 4,
+          }}
         >
           {rowError}
         </div>

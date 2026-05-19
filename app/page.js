@@ -1,256 +1,242 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-function formatAED(value) {
-  if (value === null || value === undefined) return "—";
-  return `AED ${Number(value).toLocaleString("en-AE")}`;
+function fm(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  if (n >= 1e6) return "AED " + (n / 1e6).toFixed(2) + "M";
+  if (n >= 1e3) return "AED " + (n / 1e3).toFixed(1) + "K";
+  return "AED " + Number(n).toLocaleString("en-AE");
 }
 
-function statusBadgeStyle(status) {
-  switch (status) {
-    case "approved":
-      return {
-        bg: "var(--mz-green-bg)",
-        border: "var(--mz-green-border)",
-        color: "var(--mz-green-text)",
-      };
-    case "rejected":
-    case "declined":
-    case "expired":
-      return {
-        bg: "var(--mz-red-bg)",
-        border: "var(--mz-red-border)",
-        color: "var(--mz-red-text)",
-      };
-    case "under_review":
-    case "extracting":
-    case "uploading":
-      return {
-        bg: "var(--mz-amber-bg)",
-        border: "var(--mz-amber-border)",
-        color: "var(--mz-amber-text)",
-      };
-    default:
-      return {
-        bg: "rgba(255, 255, 255, 0.04)",
-        border: "var(--mz-border)",
-        color: "var(--mz-muted)",
-      };
-  }
+function scoreColor(s) {
+  if (s == null) return "var(--mz-muted)";
+  if (s >= 90) return "var(--mz-tier-excellent-plus)";
+  if (s >= 80) return "var(--mz-tier-excellent)";
+  if (s >= 70) return "var(--mz-tier-above-avg)";
+  if (s >= 60) return "var(--mz-tier-average)";
+  if (s >= 50) return "var(--mz-tier-below-avg)";
+  if (s >= 25) return "var(--mz-tier-poor)";
+  return "var(--mz-tier-critical)";
 }
 
-export default function DashboardPage() {
+export default function Dashboard() {
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function load() {
+    (async () => {
       try {
-        setLoading(true);
-        setError("");
         const res = await fetch(`${API_BASE_URL}/cases`, { cache: "no-store" });
-        if (!res.ok) throw new Error(`Failed to fetch cases: ${res.status}`);
+        if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
-        setCases(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError(err.message || "Failed to load cases");
+        setCases(data);
+      } catch (e) {
+        setError(e.message || "Failed to load cases");
       } finally {
         setLoading(false);
       }
-    }
-    load();
+    })();
   }, []);
 
   const totalCases = cases.length;
+  const totalRev = cases.reduce(
+    (s, c) => s + (Number(c.ltm_revenue_aed) || 0), 0);
+  const totalCeiling = cases.reduce((s, c) => s + (Number(c.ceiling_aed) || 0), 0);
   const avgScore =
-    cases.length > 0
-      ? (
-          cases.reduce((s, c) => s + (Number(c.score) || 0), 0) / cases.length
-        ).toFixed(1)
-      : "—";
-  const totalCeiling = cases.reduce(
-    (s, c) => s + (Number(c.ceiling_aed) || 0),
-    0,
-  );
+    totalCases > 0
+      ? cases.reduce((s, c) => s + (Number(c.score) || 0), 0) / totalCases
+      : 0;
 
-  const statusCounts = cases.reduce((acc, c) => {
-    const k = c.status || "unknown";
-    acc[k] = (acc[k] || 0) + 1;
-    return acc;
-  }, {});
-  const statusEntries = Object.entries(statusCounts).sort(
-    (a, b) => b[1] - a[1],
-  );
-
-  return (
-    <div className="px-8 py-8">
-      <div className="mb-8">
-        <div className="text-xs uppercase tracking-widest text-[color:var(--mz-muted)]">
-          Dashboard
-        </div>
-        <h1 className="mt-2 text-3xl font-semibold text-[color:var(--mz-text)]">
-          Portfolio Overview
-        </h1>
-        <p className="mt-2 text-sm text-[color:var(--mz-muted)]">
-          Live case database. Click a row to open the case file.
-        </p>
-      </div>
-
-      {error && (
-        <div
-          className="mb-6 rounded-xl border p-4 text-sm"
-          style={{
-            backgroundColor: "var(--mz-red-bg)",
-            borderColor: "var(--mz-red-border)",
-            color: "var(--mz-red-text)",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatTile label="Total Cases" value={loading ? "…" : totalCases} />
-        <StatTile
-          label="Average Score"
-          value={loading ? "…" : avgScore}
-          accent
-        />
-        <StatTile
-          label="Aggregate Ceiling"
-          value={loading ? "…" : formatAED(totalCeiling)}
-          small
-        />
-        <StatTile
-          label="Statuses"
-          value={
-            loading
-              ? "…"
-              : statusEntries.length === 0
-                ? "—"
-                : `${statusEntries[0][0]} (${statusEntries[0][1]})`
-          }
-          small
-        />
-      </div>
-
-      <div
-        className="rounded-2xl border"
-        style={{
-          backgroundColor: "var(--mz-card)",
-          borderColor: "var(--mz-border)",
-        }}
-      >
-        <div
-          className="border-b px-6 py-4 text-xs uppercase tracking-widest text-[color:var(--mz-muted)]"
-          style={{ borderColor: "var(--mz-border)" }}
-        >
-          Cases
-        </div>
-
-        {loading ? (
-          <div className="p-6 text-sm text-[color:var(--mz-muted)]">
-            Loading cases...
-          </div>
-        ) : cases.length === 0 ? (
-          <div className="p-6 text-sm text-[color:var(--mz-muted)]">
-            No cases yet.
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr
-                className="text-left text-xs uppercase tracking-widest text-[color:var(--mz-muted)]"
-                style={{ borderBottom: "1px solid var(--mz-border)" }}
-              >
-                <th className="px-6 py-3 font-medium">Case Ref</th>
-                <th className="px-6 py-3 font-medium">Venue</th>
-                <th className="px-6 py-3 font-medium">Group</th>
-                <th className="px-6 py-3 font-medium">Score</th>
-                <th className="px-6 py-3 font-medium">Grade</th>
-                <th className="px-6 py-3 font-medium">Ceiling</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cases.map((c) => {
-                const badge = statusBadgeStyle(c.status);
-                return (
-                  <tr
-                    key={c.id}
-                    className="text-sm transition hover:bg-white/[0.02]"
-                    style={{ borderBottom: "1px solid var(--mz-border)" }}
-                  >
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/cases/${c.case_ref || c.id}`}
-                        className="mz-mono text-[color:var(--mz-accent)] hover:underline"
-                      >
-                        {c.case_ref || "—"}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 text-[color:var(--mz-text)]">
-                      {c.venue_name || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-[color:var(--mz-muted)]">
-                      {c.group_name || "—"}
-                    </td>
-                    <td className="px-6 py-4 mz-mono text-[color:var(--mz-accent)]">
-                      {c.score ?? "—"}
-                    </td>
-                    <td className="px-6 py-4 mz-mono text-[color:var(--mz-text)]">
-                      {c.grade || "—"}
-                    </td>
-                    <td className="px-6 py-4 mz-mono text-[color:var(--mz-text)]">
-                      {formatAED(c.ceiling_aed)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className="rounded-full border px-2.5 py-1 text-xs"
-                        style={{
-                          backgroundColor: badge.bg,
-                          borderColor: badge.border,
-                          color: badge.color,
-                        }}
-                      >
-                        {c.status || "—"}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StatTile({ label, value, accent = false, small = false }) {
-  return (
-    <div
-      className="rounded-2xl border p-5"
-      style={{
-        backgroundColor: "var(--mz-card)",
-        borderColor: "var(--mz-border)",
-      }}
-    >
-      <div className="text-xs uppercase tracking-widest text-[color:var(--mz-muted)]">
+  const Tile = ({ label, value, accent }) => (
+    <div className="mz-card" style={{ flex: 1, minWidth: 0 }}>
+      <div className="mz-eyebrow" style={{ color: accent ? "var(--mz-accent)" : "var(--mz-muted)" }}>
         {label}
       </div>
       <div
-        className={`mt-3 mz-mono font-semibold ${small ? "text-xl" : "text-3xl"}`}
+        className="mz-mono"
         style={{
+          fontSize: "var(--mz-fs-stat)",
+          fontWeight: 900,
           color: accent ? "var(--mz-accent)" : "var(--mz-text)",
+          marginTop: 8,
+          letterSpacing: "-0.5px",
         }}
       >
         {value}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: "28px 24px" }}>
+      <h1
+        style={{
+          fontSize: "var(--mz-fs-h1)",
+          fontWeight: 900,
+          color: "var(--mz-text-on-page)",
+          margin: 0,
+          marginBottom: 6,
+          letterSpacing: "-0.3px",
+        }}
+      >
+        Portfolio Overview
+      </h1>
+      <p
+        className="mz-subheader"
+        style={{ margin: 0, marginBottom: 24 }}
+      >
+        Live snapshot of every venue case in the risk pipeline.
+      </p>
+
+      <div style={{ display: "flex", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
+        <Tile label="Total Cases" value={totalCases} />
+        <Tile label="Avg Score" value={avgScore > 0 ? avgScore.toFixed(1) : "—"} />
+        <Tile label="Total LTM Revenue" value={fm(totalRev)} />
+        <Tile label="Total Ceiling" value={fm(totalCeiling)} accent />
+      </div>
+
+      <div className="mz-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div
+          style={{
+            padding: "14px 22px",
+            borderBottom: "1px solid var(--mz-accent-15)",
+            background: "linear-gradient(90deg, var(--mz-accent-06), transparent)",
+          }}
+        >
+          <span className="mz-eyebrow">Cases</span>
+        </div>
+
+        {loading && (
+          <div style={{ padding: 28, color: "var(--mz-muted)", fontSize: "var(--mz-fs-sm)" }}>
+            Loading cases...
+          </div>
+        )}
+
+        {error && (
+          <div style={{ padding: 22 }}>
+            <div
+              style={{
+                padding: "12px 16px",
+                borderRadius: "var(--mz-radius-md)",
+                background: "var(--mz-red-bg)",
+                border: "1px solid var(--mz-red-border)",
+                color: "var(--mz-red-text)",
+                fontSize: "var(--mz-fs-sm)",
+              }}
+            >
+              Failed to load cases: {error}
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && cases.length === 0 && (
+          <div style={{ padding: 28, color: "var(--mz-muted)", fontSize: "var(--mz-fs-sm)" }}>
+            No cases found.
+          </div>
+        )}
+
+        {!loading && cases.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+              <thead>
+                <tr style={{ background: "var(--mz-card-subtle)" }}>
+                  {["Case Ref", "Venue", "Group", "Score", "Grade", "Ceiling (AED)", "Status"].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        padding: "12px 16px",
+                        textAlign: "left",
+                        fontSize: "var(--mz-fs-xxs)",
+                        fontWeight: 500,
+                        color: "var(--mz-muted)",
+                        textTransform: "uppercase",
+                        letterSpacing: 1.4,
+                        borderBottom: "1px solid var(--mz-border-soft)",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {cases.map((c) => (
+                  <tr
+                    key={c.id}
+                    style={{
+                      borderBottom: "1px solid var(--mz-border-subtle)",
+                    }}
+                  >
+                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)" }}>
+                      <Link
+                        href={`/cases/${c.case_ref || c.id}`}
+                        className="mz-mono"
+                        style={{
+                          color: "var(--mz-accent)",
+                          fontWeight: 700,
+                          transition: "color 0.15s",
+                        }}
+                      >
+                        {c.case_ref || c.id.slice(0, 8)}
+                      </Link>
+                    </td>
+                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)", color: "var(--mz-text)", fontWeight: 600 }}>
+                      {c.venue_name || "—"}
+                    </td>
+                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)", color: "var(--mz-muted)" }}>
+                      {c.group_name || "—"}
+                    </td>
+                    <td
+                      className="mz-mono"
+                      style={{
+                        padding: "12px 16px",
+                        fontSize: "var(--mz-fs-body)",
+                        fontWeight: 800,
+                        color: scoreColor(c.score),
+                      }}
+                    >
+                      {c.score != null ? Number(c.score).toFixed(1) : "—"}
+                    </td>
+                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)" }}>
+                      <span
+                        style={{
+                          padding: "3px 10px",
+                          borderRadius: 6,
+                          background: scoreColor(c.score) + "25",
+                          color: scoreColor(c.score),
+                          fontWeight: 700,
+                          fontSize: "var(--mz-fs-xs)",
+                          border: "1px solid " + scoreColor(c.score) + "40",
+                        }}
+                      >
+                        {c.grade || "—"}
+                      </span>
+                    </td>
+                    <td
+                      className="mz-mono"
+                      style={{
+                        padding: "12px 16px",
+                        fontSize: "var(--mz-fs-sm)",
+                        fontWeight: 700,
+                        color: "var(--mz-accent)",
+                      }}
+                    >
+                      {fm(c.ceiling_aed)}
+                    </td>
+                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)", color: "var(--mz-muted)" }}>
+                      {c.status || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

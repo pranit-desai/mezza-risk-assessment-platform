@@ -6,50 +6,70 @@ import { useCallback, useEffect, useState } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-function formatAED(value) {
-  if (value === null || value === undefined) return "—";
-  return `AED ${Number(value).toLocaleString("en-AE")}`;
+function fm(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  if (n >= 1e6) return "AED " + (n / 1e6).toFixed(2) + "M";
+  if (n >= 1e3) return "AED " + (n / 1e3).toFixed(1) + "K";
+  return "AED " + Number(n).toLocaleString("en-AE");
 }
 
-function statusBadgeStyle(status) {
-  switch (status) {
-    case "approved":
-      return {
-        bg: "var(--mz-green-bg)",
-        border: "var(--mz-green-border)",
-        color: "var(--mz-green-text)",
-      };
-    case "rejected":
-    case "declined":
-    case "expired":
-      return {
-        bg: "var(--mz-red-bg)",
-        border: "var(--mz-red-border)",
-        color: "var(--mz-red-text)",
-      };
-    case "under_review":
-    case "extracting":
-    case "uploading":
-      return {
-        bg: "var(--mz-amber-bg)",
-        border: "var(--mz-amber-border)",
-        color: "var(--mz-amber-text)",
-      };
-    default:
-      return {
-        bg: "rgba(255, 255, 255, 0.04)",
-        border: "var(--mz-border)",
-        color: "var(--mz-muted)",
-      };
-  }
+function scoreColor(s) {
+  if (s == null) return "var(--mz-muted)";
+  if (s >= 90) return "var(--mz-tier-excellent-plus)";
+  if (s >= 80) return "var(--mz-tier-excellent)";
+  if (s >= 70) return "var(--mz-tier-above-avg)";
+  if (s >= 60) return "var(--mz-tier-average)";
+  if (s >= 50) return "var(--mz-tier-below-avg)";
+  if (s >= 25) return "var(--mz-tier-poor)";
+  return "var(--mz-tier-critical)";
 }
 
-const STATUS_OPTIONS = [
-  "data_bank_ready",
-  "under_review",
-  "approved",
-  "rejected",
+// Analyst-clickable status transitions.
+// System-set statuses (new, uploading, extracting, data_bank_ready, rejected, expired)
+// are NOT shown as buttons — they appear only as the current status label.
+const ANALYST_STATUSES = [
+  { value: "under_review", label: "Under Review" },
+  { value: "approved", label: "Approved" },
+  { value: "declined", label: "Declined" },
 ];
+
+// Human-readable mapping for any status value (analyst or system)
+const STATUS_LABELS = {
+  new: "New",
+  uploading: "Uploading",
+  extracting: "Extracting",
+  data_bank_ready: "Data Bank Ready",
+  under_review: "Under Review",
+  approved: "Approved",
+  declined: "Declined",
+  rejected: "Rejected (auto)",
+  expired: "Expired",
+};
+
+function KpiCard({ label, value, sub, color, danger, mono }) {
+  const accent = danger ? "var(--mz-tier-critical)" : color || "var(--mz-accent)";
+  return (
+    <div className="mz-card" style={{ minWidth: 0 }}>
+      <div className="mz-eyebrow">{label}</div>
+      <div
+        className={mono ? "mz-mono" : ""}
+        style={{
+          fontSize: "var(--mz-fs-stat)",
+          fontWeight: 900,
+          color: accent,
+          marginTop: 8,
+          letterSpacing: "-0.5px",
+          lineHeight: 1.1,
+        }}
+      >
+        {value}
+      </div>
+      {sub && (
+        <div style={{ fontSize: "var(--mz-fs-xs)", color: "var(--mz-muted)", marginTop: 6 }}>{sub}</div>
+      )}
+    </div>
+  );
+}
 
 export default function CaseOverviewPage() {
   const params = useParams();
@@ -58,15 +78,13 @@ export default function CaseOverviewPage() {
   const [caseData, setCaseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch(`${API_BASE_URL}/cases/${caseId}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`${API_BASE_URL}/cases/${caseId}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to fetch case: ${res.status}`);
       const data = await res.json();
       setCaseData(data);
@@ -83,9 +101,8 @@ export default function CaseOverviewPage() {
 
   async function updateStatus(newStatus) {
     if (!caseData) return;
+    setUpdatingStatus(true);
     try {
-      setSaving(true);
-      setError("");
       const res = await fetch(`${API_BASE_URL}/cases/${caseData.id}/field`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -96,236 +113,200 @@ export default function CaseOverviewPage() {
           changed_by: "Pranit",
         }),
       });
-      if (!res.ok) throw new Error(`Failed to update status: ${res.status}`);
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Status update failed: ${res.status} — ${body.slice(0, 200)}`);
+      }
       const updated = await res.json();
       setCaseData(updated);
     } catch (err) {
-      setError(err.message || "Failed to update status");
+      alert(err.message || "Failed to update status");
     } finally {
-      setSaving(false);
+      setUpdatingStatus(false);
     }
   }
 
-  const extracted = caseData?.extracted_json || {};
-  const creditScore = extracted.credit_score || {};
-  const posHeadline = extracted.pos_headline || {};
-  const crossChecks = extracted.cross_checks || {};
-
-  const cardSharePct =
-    posHeadline.card_share_pct ?? creditScore.card_share_pct ?? null;
-
   if (loading) {
     return (
-      <div className="px-8 py-8 text-sm text-[color:var(--mz-muted)]">
+      <div style={{ padding: "28px 24px", color: "var(--mz-muted)" }}>
         Loading case...
       </div>
     );
   }
 
-  if (error) {
+  if (error || !caseData) {
     return (
-      <div className="px-8 py-8">
+      <div style={{ padding: "28px 24px" }}>
         <Link
           href="/"
-          className="mb-6 inline-block text-xs uppercase tracking-widest text-[color:var(--mz-muted)] hover:text-[color:var(--mz-accent)]"
+          style={{
+            color: "var(--mz-muted)",
+            fontSize: "var(--mz-fs-xs)",
+            textTransform: "uppercase",
+            letterSpacing: 1.5,
+            fontWeight: 700,
+          }}
         >
           ← Back to Dashboard
         </Link>
         <div
-          className="rounded-xl border p-4 text-sm"
           style={{
-            backgroundColor: "var(--mz-red-bg)",
-            borderColor: "var(--mz-red-border)",
+            marginTop: 20,
+            padding: 16,
+            borderRadius: "var(--mz-radius-md)",
+            background: "var(--mz-red-bg)",
+            border: "1px solid var(--mz-red-border)",
             color: "var(--mz-red-text)",
           }}
         >
-          {error}
+          {error || "Case not found"}
         </div>
       </div>
     );
   }
 
-  if (!caseData) {
-    return (
-      <div className="px-8 py-8 text-sm text-[color:var(--mz-muted)]">
-        Case not found.
-      </div>
-    );
-  }
-
-  const statusBadge = statusBadgeStyle(caseData.status);
+  const crossChecks = caseData.extracted_json?.cross_checks || {};
+  const currentStatusLabel = STATUS_LABELS[caseData.status] || caseData.status || "—";
 
   return (
-    <div className="px-8 py-8">
+    <div style={{ padding: "28px 24px" }}>
       <Link
         href="/"
-        className="mb-6 inline-block text-xs uppercase tracking-widest text-[color:var(--mz-muted)] hover:text-[color:var(--mz-accent)]"
+        style={{
+          color: "var(--mz-muted)",
+          fontSize: "var(--mz-fs-xs)",
+          textTransform: "uppercase",
+          letterSpacing: 1.5,
+          fontWeight: 700,
+        }}
       >
         ← Back to Dashboard
       </Link>
 
-      <div className="mb-8 flex items-start justify-between">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-[color:var(--mz-accent)]">
-            Case File · {caseData.case_ref}
-          </div>
-          <h1 className="mt-2 text-3xl font-semibold text-[color:var(--mz-text)]">
-            {caseData.venue_name}
-          </h1>
-          <p className="mt-2 text-sm text-[color:var(--mz-muted)]">
-            {caseData.group_name || "—"} · {caseData.location || "—"} ·{" "}
-            {caseData.concept || "—"}
-          </p>
-        </div>
-        <span
-          className="rounded-full border px-3 py-1.5 text-xs"
+      <div style={{ marginTop: 18, marginBottom: 22 }}>
+        <div className="mz-eyebrow mz-mono">{caseData.case_ref}</div>
+        <h1
           style={{
-            backgroundColor: statusBadge.bg,
-            borderColor: statusBadge.border,
-            color: statusBadge.color,
+            fontSize: "var(--mz-fs-h1)",
+            fontWeight: 900,
+            color: "var(--mz-text-on-page)",
+            margin: 0,
+            marginTop: 6,
+            letterSpacing: "-0.3px",
           }}
         >
-          {caseData.status || "—"}
-        </span>
+          {caseData.venue_name}
+        </h1>
+        <div className="mz-subheader" style={{ marginTop: 6 }}>
+          {caseData.group_name} · {caseData.location} · {caseData.concept || "—"}
+        </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-        <KpiCard label="Score" value={caseData.score ?? "—"} accent big />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 14 }}>
         <KpiCard
-          label="Grade"
-          value={caseData.grade ?? "—"}
-          sub={creditScore.ceiling_basis || "Risk-based"}
+          label="Mezza Score"
+          value={caseData.score != null ? Number(caseData.score).toFixed(1) : "—"}
+          sub={`Grade ${caseData.grade || "—"}`}
+          color={scoreColor(caseData.score)}
+          mono
         />
         <KpiCard
-          label="Ceiling"
-          value={formatAED(caseData.ceiling_aed)}
-          sub={`${creditScore.ceiling_pct_of_revenue ?? "—"}% of LTM revenue`}
+          label="Lending Ceiling"
+          value={fm(caseData.ceiling_aed)}
+          sub="Approved disbursal cap"
+          color="var(--mz-accent)"
+          mono
         />
         <KpiCard
           label="LTM Revenue"
-          value={formatAED(creditScore.ltm_revenue_aed)}
-          sub={
-            cardSharePct !== null
-              ? `Card share ${cardSharePct}%`
-              : "Card share —"
-          }
+          value={fm(caseData.extracted_json?.pos_headline?.net_revenue_ex_tax)}
+          sub="Trailing 12 months"
+          color="var(--mz-text)"
+          mono
         />
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 22 }}>
         <KpiCard
           label="Financial Health"
-          value={creditScore.financial_health_score ?? "—"}
-          sub={`Grade ${creditScore.financial_health_grade || "—"}`}
-          accent
+          value={
+            caseData.extracted_json?.credit_score?.financial_health_score != null
+              ? Number(caseData.extracted_json.credit_score.financial_health_score).toFixed(1)
+              : "—"
+          }
+          sub="Component score"
+          color={scoreColor(caseData.extracted_json?.credit_score?.financial_health_score)}
+          mono
         />
         <KpiCard
           label="Restaurant Profile"
-          value={creditScore.restaurant_profile_score ?? "—"}
-          sub={`Grade ${creditScore.restaurant_profile_grade || "—"}`}
-          purple
+          value={
+            caseData.extracted_json?.credit_score?.restaurant_profile_score != null
+              ? Number(caseData.extracted_json.credit_score.restaurant_profile_score).toFixed(1)
+              : "—"
+          }
+          sub="Component score"
+          color={scoreColor(caseData.extracted_json?.credit_score?.restaurant_profile_score)}
+          mono
         />
         <KpiCard
           label="Trade Licence"
           value={crossChecks.tl_status || "—"}
           sub={crossChecks.tl_flag || "No TL flag"}
-          danger={
-            crossChecks.tl_status === "EXPIRED" ||
-            crossChecks.tl_status === "expired"
-          }
+          danger={crossChecks.tl_status === "EXPIRED" || crossChecks.tl_status === "expired"}
         />
       </div>
-{/* Quick navigation to sub-pages */}
-      <div className="mb-6 flex gap-3">
+
+      <div style={{ marginBottom: 22, display: "flex", gap: 12 }}>
         <Link
           href={`/cases/${caseData.case_ref || caseData.id}/data-bank`}
-          className="rounded-xl border px-4 py-2 text-sm transition hover:opacity-80"
-          style={{
-            backgroundColor: "rgba(0, 196, 159, 0.08)",
-            borderColor: "var(--mz-accent)",
-            color: "var(--mz-accent)",
-          }}
+          className="mz-clickable"
+          style={{ padding: "10px 18px", display: "inline-block" }}
         >
           Open Data Bank →
         </Link>
       </div>
-      <div
-        className="rounded-2xl border p-5"
-        style={{
-          backgroundColor: "var(--mz-card)",
-          borderColor: "var(--mz-border)",
-        }}
-      >
-        <div className="mb-4 flex items-center justify-between">
+
+      <div className="mz-card">
+        <div style={{ marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div className="text-xs uppercase tracking-widest text-[color:var(--mz-muted)]">
-              Analyst Status Controls
-            </div>
-            <div className="mt-1 text-sm text-[color:var(--mz-muted)]">
+            <div className="mz-eyebrow">Analyst Status Controls</div>
+            <div style={{ fontSize: "var(--mz-fs-xs)", color: "var(--mz-muted)", marginTop: 4 }}>
               Each click writes a row to audit_log.
             </div>
           </div>
-          <div className="text-xs text-[color:var(--mz-muted)]">
-            {saving ? "Saving..." : "Ready"}
+          <div style={{ fontSize: "var(--mz-fs-xs)", color: "var(--mz-muted)" }}>
+            Current: <span style={{ color: "var(--mz-text)", fontWeight: 700 }}>{currentStatusLabel}</span>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          {STATUS_OPTIONS.map((status) => (
-            <button
-              key={status}
-              onClick={() => updateStatus(status)}
-              disabled={saving || caseData.status === status}
-              className="rounded-xl border px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-40"
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.04)",
-                borderColor: "var(--mz-border)",
-                color: "var(--mz-text)",
-              }}
-            >
-              Set {status}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {ANALYST_STATUSES.map((s) => {
+            const active = s.value === caseData.status;
+            return (
+              <button
+                key={s.value}
+                onClick={() => updateStatus(s.value)}
+                disabled={updatingStatus}
+                className={`mz-clickable ${active ? "active" : ""}`}
+                style={{
+                  padding: "8px 14px",
+                  cursor: updatingStatus ? "wait" : "pointer",
+                  opacity: updatingStatus ? 0.5 : 1,
+                }}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ marginTop: 16, fontSize: "var(--mz-fs-xs)", color: "var(--mz-muted)", lineHeight: 1.6 }}>
+          <strong style={{ color: "var(--mz-accent-peach)" }}>System-set states</strong> (not clickable here):
+          {" "}new, uploading, extracting, data_bank_ready, rejected (auto-policy), expired.
+          {" "}Use the Data Bank to trigger ingestion-stage transitions.
         </div>
       </div>
-    </div>
-  );
-}
-
-function KpiCard({
-  label,
-  value,
-  sub,
-  accent = false,
-  purple = false,
-  danger = false,
-  big = false,
-}) {
-  let color = "var(--mz-text)";
-  if (accent) color = "var(--mz-accent)";
-  if (purple) color = "var(--mz-purple)";
-  if (danger) color = "var(--mz-red-text)";
-
-  return (
-    <div
-      className="rounded-2xl border p-5"
-      style={{
-        backgroundColor: "var(--mz-card)",
-        borderColor: "var(--mz-border)",
-      }}
-    >
-      <div className="text-xs uppercase tracking-widest text-[color:var(--mz-muted)]">
-        {label}
-      </div>
-      <div
-        className={`mt-3 mz-mono font-semibold ${big ? "text-4xl" : "text-2xl"}`}
-        style={{ color }}
-      >
-        {value}
-      </div>
-      {sub && (
-        <div className="mt-1 text-sm text-[color:var(--mz-muted)]">{sub}</div>
-      )}
     </div>
   );
 }

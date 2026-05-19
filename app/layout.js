@@ -5,7 +5,7 @@ import ApiStatusPill from "./_components/ApiStatusPill";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "700", "800", "900"],
   variable: "--font-dm-sans",
   display: "swap",
 });
@@ -18,25 +18,30 @@ const dmMono = DM_Mono({
 });
 
 export const metadata = {
-  title: "Mezza Risk Assessment Platform",
-  description: "F&B credit risk assessment and underwriting workflow",
+  title: "Mezza Risk Assessment",
+  description: "Credit intelligence for F&B underwriting",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html
-      lang="en"
-      className={`${dmSans.variable} ${dmMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full">
-        <div className="flex min-h-screen">
+    <html lang="en" className={`${dmSans.variable} ${dmMono.variable}`}>
+      <body>
+        <div style={{ display: "flex", minHeight: "100vh", background: "var(--mz-page)" }}>
           <Sidebar />
-          <div className="flex-1 flex flex-col">
-            <header className="flex justify-end px-8 py-4 border-b border-[color:var(--mz-border)]">
+          <main style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                padding: "12px 24px",
+                borderBottom: "1px solid var(--mz-border-on-page)",
+                display: "flex",
+                justifyContent: "flex-end",
+                background: "var(--mz-page)",
+              }}
+            >
               <ApiStatusPill />
-            </header>
-            <main className="flex-1">{children}</main>
-          </div>
+            </div>
+            {children}
+          </main>
         </div>
       </body>
     </html>

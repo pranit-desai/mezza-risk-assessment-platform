@@ -5,100 +5,124 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/" },
-  { label: "Cases", href: "/cases" },
-  { label: "Portfolio", href: "/portfolio" },
-  { label: "Library", href: "/library" },
+  { href: "/", label: "Dashboard", icon: "▣" },
+  { href: "/cases", label: "Cases", icon: "▦" },
 ];
-
-const ICONS = {
-  Dashboard: "▦",
-  Cases: "▤",
-  Portfolio: "◐",
-  Library: "❏",
-};
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("mz-sidebar-collapsed");
-    if (saved === "1") setCollapsed(true);
-    setMounted(true);
+    try {
+      const saved = localStorage.getItem("mezza-sidebar-collapsed");
+      if (saved === "true") setCollapsed(true);
+    } catch (e) {}
   }, []);
 
   function toggle() {
     const next = !collapsed;
     setCollapsed(next);
-    localStorage.setItem("mz-sidebar-collapsed", next ? "1" : "0");
+    try {
+      localStorage.setItem("mezza-sidebar-collapsed", String(next));
+    } catch (e) {}
   }
 
-  function isActive(href) {
+  const isActive = (href) => {
     if (href === "/") return pathname === "/";
-    return pathname === href || pathname.startsWith(href + "/");
-  }
+    return pathname.startsWith(href);
+  };
 
   return (
     <aside
-      className={`flex flex-col border-r border-[color:var(--mz-border)] bg-[color:var(--mz-sidebar)] transition-all duration-200 ${
-        collapsed ? "w-16" : "w-64"
-      }`}
+      style={{
+        width: collapsed ? 64 : 220,
+        flexShrink: 0,
+        background: "var(--mz-page)",
+        borderRight: "1px solid var(--mz-border-on-page)",
+        display: "flex",
+        flexDirection: "column",
+        transition: "width 0.18s ease",
+      }}
     >
-      <div className="flex items-center gap-3 px-4 py-5">
+      {/* Brand */}
+      <div
+        style={{
+          padding: "18px 16px",
+          borderBottom: "1px solid var(--mz-border-on-page)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
         <div
-          className="flex h-9 w-9 items-center justify-center rounded-lg font-bold text-[#04342c]"
-          style={{ backgroundColor: "var(--mz-accent)" }}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: "linear-gradient(135deg, var(--mz-accent), var(--mz-accent-light))",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 900,
+            fontSize: 15,
+            flexShrink: 0,
+          }}
         >
           M
         </div>
         {!collapsed && (
-          <div className="overflow-hidden">
-            <div className="text-base font-semibold leading-tight text-[color:var(--mz-text)]">
-              Mezza
-            </div>
-            <div className="text-xs text-[color:var(--mz-muted)]">
-              Risk Assessment
-            </div>
-          </div>
+          <span
+            style={{
+              fontWeight: 900,
+              fontSize: 16,
+              letterSpacing: 2,
+              color: "var(--mz-accent)",
+            }}
+          >
+            MEZZA
+          </span>
         )}
       </div>
 
-      <nav className="flex-1 px-2 py-2 space-y-1">
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: "12px 8px" }}>
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
-                active
-                  ? "text-[color:var(--mz-accent)]"
-                  : "text-[color:var(--mz-muted)] hover:text-[color:var(--mz-text)]"
-              }`}
+              className={`mz-clickable ${active ? "active" : ""}`}
               style={{
-                backgroundColor: active
-                  ? "rgba(0, 196, 159, 0.08)"
-                  : "transparent",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "10px 12px",
+                marginBottom: 4,
               }}
-              title={collapsed ? item.label : undefined}
             >
-              <span className="text-base">{ICONS[item.label]}</span>
+              <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>
+                {item.icon}
+              </span>
               {!collapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
+      {/* Collapse */}
       <button
         onClick={toggle}
-        className="flex items-center justify-center border-t border-[color:var(--mz-border)] py-3 text-xs text-[color:var(--mz-muted)] hover:text-[color:var(--mz-text)] transition"
+        className="mz-clickable"
+        style={{
+          margin: "8px 12px 14px",
+          padding: 8,
+        }}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
-        <span suppressHydrationWarning>
-          {mounted && collapsed ? "›" : "‹"}
-        </span>
+        {collapsed ? "→" : "← Collapse"}
       </button>
     </aside>
   );
