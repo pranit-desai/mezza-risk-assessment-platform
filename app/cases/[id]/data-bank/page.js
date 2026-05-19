@@ -67,6 +67,12 @@ function computeCompleteness(section, extracted) {
   return "partial";
 }
 
+function getListRowValue(row, field) {
+  if (field.key === "_value") return row;
+  if (row === null || row === undefined || typeof row !== "object") return undefined;
+  return row[field.key];
+}
+
 function badgeStyle(completeness) {
   switch (completeness) {
     case "complete":
@@ -272,6 +278,7 @@ function SectionView({ section, caseId, extracted, onOverrideSaved }) {
   const sectionData = getByPath(extracted, section.jsonPath) || {};
   const completeness = computeCompleteness(section, extracted);
   const badge = badgeStyle(completeness);
+  const rendersAsTable = section.listOf && Array.isArray(sectionData);
 
   return (
     <div className="mz-card">
@@ -324,29 +331,107 @@ function SectionView({ section, caseId, extracted, onOverrideSaved }) {
         </span>
       </div>
 
-      <div>
-        {(section.fields || []).map((field) => {
-          const rawValue = field.mirroredFrom
-            ? resolveMirror(field.mirroredFrom, extracted)
-            : Array.isArray(sectionData)
-              ? undefined
-              : sectionData[field.key];
-          return (
-            <FieldRow
-              key={field.key}
-              field={field}
-              value={rawValue}
-              caseId={caseId}
-              fieldPath={
-                field.mirroredFrom || section.listOf || Array.isArray(sectionData)
-                  ? null
-                  : `${section.jsonPath}.${field.key}`
-              }
-              onOverrideSaved={onOverrideSaved}
-            />
-          );
-        })}
+      {rendersAsTable ? (
+        <ListTable section={section} rows={sectionData} />
+      ) : (
+        <div>
+          {(section.fields || []).map((field) => {
+            const rawValue = field.mirroredFrom
+              ? resolveMirror(field.mirroredFrom, extracted)
+              : Array.isArray(sectionData)
+                ? undefined
+                : sectionData[field.key];
+            return (
+              <FieldRow
+                key={field.key}
+                field={field}
+                value={rawValue}
+                caseId={caseId}
+                fieldPath={
+                  field.mirroredFrom || section.listOf || Array.isArray(sectionData)
+                    ? null
+                    : `${section.jsonPath}.${field.key}`
+                }
+                onOverrideSaved={onOverrideSaved}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ListTable({ section, rows }) {
+  const fields = section.fields || [];
+
+  if (rows.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "14px 0",
+          color: "var(--mz-muted)",
+          fontSize: "var(--mz-fs-sm)",
+          borderTop: "1px solid var(--mz-border-soft)",
+        }}
+      >
+        No {section.listOf} records found.
       </div>
+    );
+  }
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          minWidth: Math.max(fields.length * 150, 520),
+        }}
+      >
+        <thead>
+          <tr>
+            {fields.map((field) => (
+              <th
+                key={field.key}
+                scope="col"
+                style={{
+                  padding: "10px 12px",
+                  borderBottom: "1px solid var(--mz-border-soft)",
+                  color: "var(--mz-muted)",
+                  fontSize: "var(--mz-fs-xs)",
+                  fontWeight: 700,
+                  textAlign: "left",
+                  textTransform: "uppercase",
+                }}
+              >
+                {field.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {fields.map((field) => (
+                <td
+                  key={field.key}
+                  className="mz-mono"
+                  style={{
+                    padding: "11px 12px",
+                    borderBottom: "1px solid var(--mz-border-soft)",
+                    color: "var(--mz-text)",
+                    fontSize: "var(--mz-fs-sm)",
+                    verticalAlign: "top",
+                  }}
+                >
+                  {formatValue(getListRowValue(row, field), field.type)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
