@@ -1,7 +1,6 @@
 import { DM_Sans, DM_Mono } from "next/font/google";
 import "./globals.css";
-import Sidebar from "./_components/Sidebar";
-import ApiStatusPill from "./_components/ApiStatusPill";
+import AppShell from "./_components/AppShell";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -26,23 +25,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${dmMono.variable}`}>
       <body>
-        <div style={{ display: "flex", minHeight: "100vh", background: "var(--mz-page)" }}>
-          <Sidebar />
-          <main style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                padding: "12px 24px",
-                borderBottom: "1px solid var(--mz-border-on-page)",
-                display: "flex",
-                justifyContent: "flex-end",
-                background: "var(--mz-page)",
-              }}
-            >
-              <ApiStatusPill />
-            </div>
-            {children}
-          </main>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

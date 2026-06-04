@@ -1,52 +1,16 @@
-'use client';
-import { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { loadStripe } from '@stripe/stripe-js';
+import ConnectClient from './ConnectClient';
 
-export default function ConnectPage() {
-  const params = useParams();
-  const token = params?.token;
-  const [status, setStatus] = useState('idle');
-  const [message, setMessage] = useState('');
+export const metadata = {
+  title: 'Mezza secure bank connection',
+  description: 'Connect your bank securely through Stripe Financial Connections.',
+  openGraph: {
+    title: 'Mezza secure bank connection',
+    description: 'Connect your bank securely through Stripe Financial Connections.',
+    siteName: 'Mezza',
+  },
+};
 
-  async function handleConnect() {
-    if (!token) {
-      setMessage('Missing connection token.');
-      setStatus('error');
-      return;
-    }
-
-    setMessage('');
-    setStatus('loading');
-    try {
-      const res = await fetch('/api/fc/session', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
-      const { clientSecret, publishableKey, error } = await res.json();
-      if (error) { setMessage(error); setStatus('error'); return; }
-      const stripe = await loadStripe(publishableKey);
-      const result = await stripe.collectFinancialConnectionsAccounts({ clientSecret });
-      if (result.error) { setMessage(result.error.message); setStatus('error'); return; }
-      const linked = result.financialConnectionsSession.accounts.length;
-      setStatus(linked > 0 ? 'done' : 'cancelled');
-    } catch (e) {
-      setMessage(e?.message || 'Something went wrong.');
-      setStatus('error');
-    }
-  }
-
-  return (
-    <main style={{ maxWidth: 460, margin: '80px auto', textAlign: 'center', fontFamily: 'system-ui', color: '#1a1a1a' }}>
-      <h1>Securely connect your bank</h1>
-      <p>We&apos;ll review balances, transactions, and account ownership to assess your application. You choose exactly what to share, through your bank&apos;s own secure login.</p>
-      <button onClick={handleConnect} disabled={status === 'loading'}
-        style={{ padding: '12px 20px', fontSize: 16, borderRadius: 8, border: 'none', background: '#635bff', color: '#fff', cursor: 'pointer' }}>
-        {status === 'loading' ? 'Opening…' : 'Connect bank account'}
-      </button>
-      {status === 'done' && <p>✅ Connected. You can close this page.</p>}
-      {status === 'cancelled' && <p>No account was connected. You can try again.</p>}
-      {status === 'error' && <p>Something went wrong — {message || 'please retry.'}</p>}
-    </main>
-  );
+export default async function ConnectPage({ params }) {
+  const { token } = await params;
+  return <ConnectClient token={token} />;
 }
