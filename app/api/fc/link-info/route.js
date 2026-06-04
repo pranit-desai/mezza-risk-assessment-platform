@@ -9,7 +9,7 @@ export async function GET(req) {
 
   const { data: conn, error } = await supabaseAdmin
     .from('connections')
-    .select('id, case_id, status, cases(id, case_ref, venue, venue_name, name, group_name)')
+    .select('id, case_id, status, cases(id, case_ref, venue_name, group_name)')
     .eq('link_token', token)
     .maybeSingle();
 
@@ -20,7 +20,7 @@ export async function GET(req) {
   return NextResponse.json({
     caseId: conn.case_id,
     caseRef: c.case_ref || '',
-    venueName: c.venue_name || c.venue || c.name || '',
+    venueName: c.venue_name || '',
     groupName: c.group_name || '',
     status: conn.status || 'pending',
   });
