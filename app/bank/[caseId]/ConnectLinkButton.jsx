@@ -26,7 +26,7 @@ export default function ConnectLinkButton({ caseId, status }) {
       </button>
       {url && (
         <div style={{ marginTop: 12, padding: 12, background: '#0c0a09', border: '1px solid #1f1a16', borderRadius: 8 }}>
-          <div style={{ color: '#8a817a', fontSize: 12, marginBottom: 6 }}>Send this link to the venue's bank signatory:</div>
+          <div style={{ color: '#8a817a', fontSize: 12, marginBottom: 6 }}>Send this link to the venue&apos;s bank signatory:</div>
           <code style={{ wordBreak: 'break-all', color: '#36c692' }}>{url}</code>
         </div>
       )}

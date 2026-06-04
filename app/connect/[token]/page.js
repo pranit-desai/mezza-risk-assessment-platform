@@ -1,16 +1,24 @@
 'use client';
 import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 
-export default function ConnectPage({ params }) {
+export default function ConnectPage() {
+  const params = useParams();
+  const token = params?.token;
   const [status, setStatus] = useState('idle');
 
   async function handleConnect() {
+    if (!token) {
+      setStatus('error');
+      return;
+    }
+
     setStatus('loading');
     try {
       const res = await fetch('/api/fc/session', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: params.token }),
+        body: JSON.stringify({ token }),
       });
       const { clientSecret, publishableKey, error } = await res.json();
       if (error) { setStatus('error'); return; }
@@ -25,7 +33,7 @@ export default function ConnectPage({ params }) {
   return (
     <main style={{ maxWidth: 460, margin: '80px auto', textAlign: 'center', fontFamily: 'system-ui', color: '#1a1a1a' }}>
       <h1>Securely connect your bank</h1>
-      <p>We'll review balances, transactions, and account ownership to assess your application. You choose exactly what to share, through your bank's own secure login.</p>
+      <p>We&apos;ll review balances, transactions, and account ownership to assess your application. You choose exactly what to share, through your bank&apos;s own secure login.</p>
       <button onClick={handleConnect} disabled={status === 'loading'}
         style={{ padding: '12px 20px', fontSize: 16, borderRadius: 8, border: 'none', background: '#635bff', color: '#fff', cursor: 'pointer' }}>
         {status === 'loading' ? 'Opening…' : 'Connect bank account'}

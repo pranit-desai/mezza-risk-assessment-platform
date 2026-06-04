@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabaseProjectRef, logSupabaseError } from '@/lib/supabaseDiagnostics';
 import ConnectLinkButton from './ConnectLinkButton';
 
 export const dynamic = 'force-dynamic';
@@ -8,9 +9,35 @@ const h1 = { fontSize: 30, fontWeight: 800, margin: 0 };
 const card = { marginTop: 14, padding: 16, background: '#0c0a09', border: '1px solid #1f1a16', borderRadius: 12 };
 
 export default async function BankPage({ params }) {
-  const caseId = params.caseId;
-  const { data: c } = await supabaseAdmin.from('cases').select('*').eq('id', caseId).maybeSingle();
-  if (!c) return <div style={wrap}>Case not found.</div>;
+  const { caseId } = await params;
+  const projectRef = getSupabaseProjectRef();
+
+  const { data: c, error: caseError } = await supabaseAdmin
+    .from('cases')
+    .select('*')
+    .eq('id', caseId)
+    .maybeSingle();
+
+  if (caseError) {
+    logSupabaseError('Bank case lookup failed', caseError, { caseId });
+    return (
+      <div style={wrap}>
+        <h1 style={h1}>Bank Data</h1>
+        <p style={{ color: '#f0a0a0' }}>Could not load this case from Supabase.</p>
+        <p style={{ color: '#b8a89c' }}>Checked project <b>{projectRef}</b> for cases.id <b>{caseId}</b>.</p>
+      </div>
+    );
+  }
+
+  if (!c) {
+    return (
+      <div style={wrap}>
+        <h1 style={h1}>Bank Data</h1>
+        <p style={{ color: '#f0a0a0' }}>Case not found.</p>
+        <p style={{ color: '#b8a89c' }}>Checked project <b>{projectRef}</b> for cases.id <b>{caseId}</b>.</p>
+      </div>
+    );
+  }
 
   if (c.region !== 'USA') {
     return (
@@ -18,20 +45,32 @@ export default async function BankPage({ params }) {
         <h1 style={h1}>Bank Data</h1>
         <p style={{ color: '#b8a89c' }}>
           This case is region <b>{c.region ?? 'UAE'}</b>. Stripe Financial Connections works
-          only with US bank accounts, so bank linking isn't available here. Use the document-pack
+          only with US bank accounts, so bank linking isn&apos;t available here. Use the document-pack
           pipeline for this case.
         </p>
       </div>
     );
   }
 
-  const { data: conn } = await supabaseAdmin.from('connections').select('*').eq('case_id', caseId).maybeSingle();
-  const { data: accounts } = await supabaseAdmin.from('fc_accounts').select('*').eq('case_id', caseId);
+  const { data: conn, error: connError } = await supabaseAdmin
+    .from('connections')
+    .select('*')
+    .eq('case_id', caseId)
+    .maybeSingle();
+  if (connError) logSupabaseError('Bank connection lookup failed', connError, { caseId });
+
+  const { data: accounts, error: accountsError } = await supabaseAdmin
+    .from('fc_accounts')
+    .select('*')
+    .eq('case_id', caseId);
+  if (accountsError) logSupabaseError('Bank account lookup failed', accountsError, { caseId });
+
   const ids = (accounts ?? []).map(a => a.id);
   let txns = [];
   if (ids.length) {
-    const { data } = await supabaseAdmin.from('fc_transactions').select('*')
+    const { data, error: txnsError } = await supabaseAdmin.from('fc_transactions').select('*')
       .in('account_id', ids).order('transacted_at', { ascending: false }).limit(100);
+    if (txnsError) logSupabaseError('Bank transaction lookup failed', txnsError, { caseId, accountIds: ids });
     txns = data ?? [];
   }
 
