@@ -7,13 +7,16 @@ export default function ConnectPage() {
   const params = useParams();
   const token = params?.token;
   const [status, setStatus] = useState('idle');
+  const [message, setMessage] = useState('');
 
   async function handleConnect() {
     if (!token) {
+      setMessage('Missing connection token.');
       setStatus('error');
       return;
     }
 
+    setMessage('');
     setStatus('loading');
     try {
       const res = await fetch('/api/fc/session', {
@@ -21,13 +24,16 @@ export default function ConnectPage() {
         body: JSON.stringify({ token }),
       });
       const { clientSecret, publishableKey, error } = await res.json();
-      if (error) { setStatus('error'); return; }
+      if (error) { setMessage(error); setStatus('error'); return; }
       const stripe = await loadStripe(publishableKey);
       const result = await stripe.collectFinancialConnectionsAccounts({ clientSecret });
-      if (result.error) { setStatus('error'); return; }
+      if (result.error) { setMessage(result.error.message); setStatus('error'); return; }
       const linked = result.financialConnectionsSession.accounts.length;
       setStatus(linked > 0 ? 'done' : 'cancelled');
-    } catch { setStatus('error'); }
+    } catch (e) {
+      setMessage(e?.message || 'Something went wrong.');
+      setStatus('error');
+    }
   }
 
   return (
@@ -40,7 +46,7 @@ export default function ConnectPage() {
       </button>
       {status === 'done' && <p>✅ Connected. You can close this page.</p>}
       {status === 'cancelled' && <p>No account was connected. You can try again.</p>}
-      {status === 'error' && <p>Something went wrong — please retry.</p>}
+      {status === 'error' && <p>Something went wrong — {message || 'please retry.'}</p>}
     </main>
   );
 }
