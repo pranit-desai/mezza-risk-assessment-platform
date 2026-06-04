@@ -1,7 +1,9 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import CaseSearchBox from "./_components/CaseSearchBox";
+import { filterCasesByQuery } from "./_lib/caseSearch";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -23,8 +25,30 @@ function scoreColor(s) {
   return "var(--mz-tier-critical)";
 }
 
+function Tile({ label, value, accent }) {
+  return (
+    <div className="mz-card" style={{ flex: 1, minWidth: 0 }}>
+      <div className="mz-eyebrow" style={{ color: accent ? "var(--mz-accent)" : "var(--mz-muted)" }}>
+        {label}
+      </div>
+      <div
+        className="mz-mono"
+        style={{
+          fontSize: "var(--mz-fs-stat)",
+          fontWeight: 900,
+          color: accent ? "var(--mz-accent)" : "var(--mz-text)",
+          marginTop: 8,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [cases, setCases] = useState([]);
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,26 +75,7 @@ export default function Dashboard() {
     totalCases > 0
       ? cases.reduce((s, c) => s + (Number(c.score) || 0), 0) / totalCases
       : 0;
-
-  const Tile = ({ label, value, accent }) => (
-    <div className="mz-card" style={{ flex: 1, minWidth: 0 }}>
-      <div className="mz-eyebrow" style={{ color: accent ? "var(--mz-accent)" : "var(--mz-muted)" }}>
-        {label}
-      </div>
-      <div
-        className="mz-mono"
-        style={{
-          fontSize: "var(--mz-fs-stat)",
-          fontWeight: 900,
-          color: accent ? "var(--mz-accent)" : "var(--mz-text)",
-          marginTop: 8,
-          letterSpacing: "-0.5px",
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
+  const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
 
   return (
     <div style={{ padding: "28px 24px" }}>
@@ -92,6 +97,13 @@ export default function Dashboard() {
       >
         Live snapshot of every venue case in the risk pipeline.
       </p>
+
+      <CaseSearchBox
+        value={query}
+        onChange={setQuery}
+        resultCount={visibleCases.length}
+        totalCount={cases.length}
+      />
 
       <div style={{ display: "flex", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
         <Tile label="Total Cases" value={totalCases} />
@@ -140,7 +152,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        {!loading && cases.length > 0 && (
+        {!loading && !error && cases.length > 0 && visibleCases.length === 0 && (
+          <div style={{ padding: 28, color: "var(--mz-muted)", fontSize: "var(--mz-fs-sm)" }}>
+            No cases match your search.
+          </div>
+        )}
+
+        {!loading && visibleCases.length > 0 && (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
               <thead>
@@ -165,7 +183,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {cases.map((c) => (
+                {visibleCases.map((c) => (
                   <tr
                     key={c.id}
                     style={{

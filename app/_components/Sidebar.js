@@ -2,30 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: "▣" },
-  { href: "/cases", label: "Cases", icon: "▦" },
+  { href: "/", label: "Dashboard", icon: "D" },
+  { href: "/cases", label: "Cases", icon: "C" },
+  { href: "/banking", label: "Banking", icon: "B" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
     try {
       const saved = localStorage.getItem("mezza-sidebar-collapsed");
-      if (saved === "true") setCollapsed(true);
-    } catch (e) {}
-  }, []);
+      return saved === "true";
+    } catch {
+      return false;
+    }
+  });
 
   function toggle() {
     const next = !collapsed;
     setCollapsed(next);
     try {
       localStorage.setItem("mezza-sidebar-collapsed", String(next));
-    } catch (e) {}
+    } catch {}
   }
 
   const isActive = (href) => {
@@ -45,7 +47,6 @@ export default function Sidebar() {
         transition: "width 0.18s ease",
       }}
     >
-      {/* Brand */}
       <div
         style={{
           padding: "18px 16px",
@@ -86,7 +87,6 @@ export default function Sidebar() {
         )}
       </div>
 
-      {/* Nav */}
       <nav style={{ flex: 1, padding: "12px 8px" }}>
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href);
@@ -103,7 +103,19 @@ export default function Sidebar() {
                 marginBottom: 4,
               }}
             >
-              <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>
+              <span
+                className="mz-mono"
+                style={{
+                  fontSize: 12,
+                  width: 20,
+                  height: 20,
+                  textAlign: "center",
+                  lineHeight: "20px",
+                  borderRadius: 5,
+                  border: "1px solid currentColor",
+                  flexShrink: 0,
+                }}
+              >
                 {item.icon}
               </span>
               {!collapsed && <span>{item.label}</span>}
@@ -112,7 +124,6 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Collapse */}
       <button
         onClick={toggle}
         className="mz-clickable"
@@ -122,7 +133,7 @@ export default function Sidebar() {
         }}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
-        {collapsed ? "→" : "← Collapse"}
+        {collapsed ? ">" : "< Collapse"}
       </button>
     </aside>
   );

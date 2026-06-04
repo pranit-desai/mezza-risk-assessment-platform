@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import CaseSearchBox from '../_components/CaseSearchBox';
+import { filterCasesByQuery } from '../_lib/caseSearch';
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function CasesPage() {
   const router = useRouter();
   const [cases, setCases] = useState([]);
+  const [query, setQuery] = useState('');
   const [state, setState] = useState('loading'); // loading | ok | error
   const [msg, setMsg] = useState('');
 
@@ -26,12 +30,21 @@ export default function CasesPage() {
     })();
   }, []);
 
+  const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
+
   return (
     <div style={{ padding: '32px 40px', color: '#f5f1ea' }}>
       <h1 style={{ fontSize: 34, fontWeight: 800, margin: 0 }}>Cases</h1>
       <p style={{ color: '#e8a07a', marginTop: 6 }}>
         Every venue case in the risk pipeline.
       </p>
+
+      <CaseSearchBox
+        value={query}
+        onChange={setQuery}
+        resultCount={visibleCases.length}
+        totalCount={cases.length}
+      />
 
       <div
         style={{
@@ -73,7 +86,11 @@ export default function CasesPage() {
           </div>
         )}
 
-        {state === 'ok' && (
+        {state === 'ok' && visibleCases.length === 0 && (
+          <div style={{ padding: 24, color: '#8a817a' }}>No cases match your search.</div>
+        )}
+
+        {state === 'ok' && visibleCases.length > 0 && (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ color: '#8a817a', textAlign: 'left', fontSize: 11, letterSpacing: 1 }}>
@@ -87,7 +104,7 @@ export default function CasesPage() {
               </tr>
             </thead>
             <tbody>
-              {cases.map((c) => (
+              {visibleCases.map((c) => (
                 <tr
                   key={c.id}
                   onClick={() => router.push(`/cases/${c.id}`)}
