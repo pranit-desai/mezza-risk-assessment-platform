@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import CaseSearchBox from '../_components/CaseSearchBox';
+import DashboardControls from '../_components/DashboardControls';
 import DashboardTabs from '../_components/DashboardTabs';
 import StatusBadge from '../_components/StatusBadge';
 import { filterCasesByQuery } from '../_lib/caseSearch';
@@ -60,6 +61,8 @@ function groupRows(cases) {
 export default function GroupsPage() {
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState('');
+  const [regionFilter, setRegionFilter] = useState('All');
+  const [mode, setMode] = useState('Recommended');
   const [state, setState] = useState('loading');
   const [msg, setMsg] = useState('');
 
@@ -78,7 +81,11 @@ export default function GroupsPage() {
     })();
   }, []);
 
-  const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
+  const regionCases = useMemo(() => {
+    if (regionFilter === 'All') return cases;
+    return cases.filter((c) => caseRegion(c) === regionFilter);
+  }, [cases, regionFilter]);
+  const visibleCases = useMemo(() => filterCasesByQuery(regionCases, query), [regionCases, query]);
   const rows = useMemo(() => groupRows(visibleCases), [visibleCases]);
 
   return (
@@ -89,12 +96,13 @@ export default function GroupsPage() {
       </p>
 
       <DashboardTabs />
+      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} mode={mode} onModeChange={setMode} />
 
       <CaseSearchBox
         value={query}
         onChange={setQuery}
         resultCount={visibleCases.length}
-        totalCount={cases.length}
+        totalCount={regionCases.length}
       />
 
       {state === 'loading' && <div style={empty}>Loading groups...</div>}

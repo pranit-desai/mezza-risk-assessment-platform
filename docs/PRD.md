@@ -557,6 +557,16 @@ Checkpoint 2026-06-05:
 - Recommended lending/ceiling values use exposure magnitude colors.
 - Summary, Groups, Tracker, Group Dashboard, and Analytics now share the same score and lending color helpers.
 
+Checkpoint 2026-06-05:
+
+- The reference screenshots should be treated as feature/layout inspiration, not a full visual replacement.
+- Keep the existing warm dark Mezza shell, sidebar, tabs, and color system.
+- Add in-page controls inspired by the screenshots: region filter, recommended/custom toggle, add/import/export actions.
+- Summary now uses screenshot-inspired KPI language: Groups, Venues, Total LTM Revenue, Portfolio Mezza, Total Disbursal.
+- Tracker now includes pipeline KPI cards before the group-first tracker table.
+- Analytics now includes disbursal share by group and LTM revenue by group, while retaining the existing dark card design.
+- Avoid future full-background/top-nav overhauls unless explicitly requested.
+
 ### Phase 6: Lending / Utilization
 
 - final lending amount workflow

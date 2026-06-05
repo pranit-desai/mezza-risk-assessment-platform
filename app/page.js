@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import CaseSearchBox from "./_components/CaseSearchBox";
+import DashboardControls from "./_components/DashboardControls";
 import DashboardTabs from "./_components/DashboardTabs";
 import { filterCasesByQuery } from "./_lib/caseSearch";
 import {
+  caseGroup,
+  caseRegion,
   formatCurrencyAmount,
   lendingAmountColor,
   recommendedCeiling,
@@ -40,9 +43,21 @@ function Tile({ label, value, color }) {
   );
 }
 
+function gradeForScore(score) {
+  const value = Number(score);
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  if (value >= 80) return "A";
+  if (value >= 70) return "B+";
+  if (value >= 60) return "B";
+  if (value >= 50) return "C";
+  return "NM";
+}
+
 export default function Dashboard() {
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState("");
+  const [region, setRegion] = useState("All");
+  const [mode, setMode] = useState("Recommended");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -61,15 +76,20 @@ export default function Dashboard() {
     })();
   }, []);
 
-  const totalCases = cases.length;
-  const totalRev = cases.reduce(
+  const regionCases = useMemo(() => {
+    if (region === "All") return cases;
+    return cases.filter((c) => caseRegion(c) === region);
+  }, [cases, region]);
+  const visibleCases = useMemo(() => filterCasesByQuery(regionCases, query), [regionCases, query]);
+  const groupCount = new Set(visibleCases.map(caseGroup)).size;
+  const totalCases = visibleCases.length;
+  const totalRev = visibleCases.reduce(
     (s, c) => s + (Number(c.ltm_revenue_aed) || 0), 0);
-  const totalCeiling = cases.reduce((s, c) => s + recommendedCeiling(c), 0);
+  const totalCeiling = visibleCases.reduce((s, c) => s + recommendedCeiling(c), 0);
   const avgScore =
     totalCases > 0
-      ? cases.reduce((s, c) => s + (Number(c.score) || 0), 0) / totalCases
+      ? visibleCases.reduce((s, c) => s + (Number(c.score) || 0), 0) / totalCases
       : 0;
-  const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
 
   return (
     <div style={{ padding: "28px 24px" }}>
@@ -93,19 +113,21 @@ export default function Dashboard() {
       </p>
 
       <DashboardTabs />
+      <DashboardControls region={region} onRegionChange={setRegion} mode={mode} onModeChange={setMode} />
 
       <CaseSearchBox
         value={query}
         onChange={setQuery}
         resultCount={visibleCases.length}
-        totalCount={cases.length}
+        totalCount={regionCases.length}
       />
 
       <div style={{ display: "flex", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
-        <Tile label="Total Cases" value={totalCases} />
-        <Tile label="Avg Score" value={avgScore > 0 ? avgScore.toFixed(1) : "—"} color={scoreColor(avgScore)} />
+        <Tile label="Groups" value={groupCount} />
+        <Tile label="Venues" value={totalCases} />
         <Tile label="Total LTM Revenue" value={fm(totalRev)} />
-        <Tile label="Recommended Ceiling" value={fm(totalCeiling)} color={lendingAmountColor(totalCeiling)} />
+        <Tile label="Portfolio Mezza" value={`${avgScore > 0 ? avgScore.toFixed(1) : "—"} / ${gradeForScore(avgScore)}`} color={scoreColor(avgScore)} />
+        <Tile label={`Total Disbursal (${mode})`} value={fm(totalCeiling)} color={lendingAmountColor(totalCeiling)} />
       </div>
 
       <div className="mz-card" style={{ padding: 0, overflow: "hidden" }}>
@@ -116,7 +138,7 @@ export default function Dashboard() {
             background: "linear-gradient(90deg, var(--mz-accent-06), transparent)",
           }}
         >
-          <span className="mz-eyebrow">Cases</span>
+          <span className="mz-eyebrow">Case Breakdown</span>
         </div>
 
         {loading && (

@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CaseSearchBox from '../_components/CaseSearchBox';
+import DashboardControls from '../_components/DashboardControls';
 import DashboardTabs from '../_components/DashboardTabs';
 import StatusBadge from '../_components/StatusBadge';
 import { filterCasesByQuery } from '../_lib/caseSearch';
@@ -59,6 +60,8 @@ export default function CasesPage() {
   const router = useRouter();
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState('');
+  const [regionFilter, setRegionFilter] = useState('All');
+  const [mode, setMode] = useState('Recommended');
   const [expanded, setExpanded] = useState({});
   const [state, setState] = useState('loading');
   const [msg, setMsg] = useState('');
@@ -78,8 +81,14 @@ export default function CasesPage() {
     })();
   }, []);
 
-  const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
+  const regionCases = useMemo(() => {
+    if (regionFilter === 'All') return cases;
+    return cases.filter((c) => caseRegion(c) === regionFilter);
+  }, [cases, regionFilter]);
+  const visibleCases = useMemo(() => filterCasesByQuery(regionCases, query), [regionCases, query]);
   const grouped = useMemo(() => groupByRegionAndGroup(visibleCases), [visibleCases]);
+  const totalRecommended = visibleCases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
+  const totalPilot = totalRecommended * 0.2;
 
   function toggle(key) {
     setExpanded((current) => ({ ...current, [key]: !current[key] }));
@@ -93,12 +102,20 @@ export default function CasesPage() {
       </p>
 
       <DashboardTabs />
+      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} mode={mode} onModeChange={setMode} />
+
+      <section style={trackerStats}>
+        <TrackerStat label="Total Cases" value={visibleCases.length} />
+        <TrackerStat label="Total Lending" value={money(totalRecommended)} color="var(--mz-accent)" />
+        <TrackerStat label="Total Pilot" value={money(totalPilot)} color="var(--mz-green-text)" />
+        <TrackerStat label="Disbursed" value={`0 / ${visibleCases.length}`} color="var(--mz-green-text)" />
+      </section>
 
       <CaseSearchBox
         value={query}
         onChange={setQuery}
         resultCount={visibleCases.length}
-        totalCount={cases.length}
+        totalCount={regionCases.length}
       />
 
       {state === 'loading' && <div style={empty}>Loading cases...</div>}
@@ -116,6 +133,7 @@ export default function CasesPage() {
       {state === 'ok' && visibleCases.length > 0 && (
         <div style={{ display: 'grid', gap: 20 }}>
           {['USA', 'UAE'].map((region) => {
+            if (regionFilter !== 'All' && region !== regionFilter) return null;
             const regionGroups = Array.from(grouped[region].entries());
             if (!regionGroups.length) return null;
             return (
@@ -232,6 +250,24 @@ export default function CasesPage() {
     </div>
   );
 }
+
+function TrackerStat({ label, value, color }) {
+  return (
+    <div className="mz-card" style={{ minWidth: 0 }}>
+      <div className="mz-eyebrow" style={{ color: 'var(--mz-muted)' }}>{label}</div>
+      <div className="mz-mono" style={{ fontSize: 26, fontWeight: 900, color: color || 'var(--mz-text)', marginTop: 8 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+const trackerStats = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: 14,
+  marginBottom: 18,
+};
 
 const sectionHeader = {
   padding: '16px 20px',

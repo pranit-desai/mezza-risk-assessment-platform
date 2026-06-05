@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import CaseSearchBox from '../_components/CaseSearchBox';
+import DashboardControls from '../_components/DashboardControls';
 import DashboardTabs from '../_components/DashboardTabs';
 import StatusBadge from '../_components/StatusBadge';
 import { filterCasesByQuery } from '../_lib/caseSearch';
@@ -37,9 +38,10 @@ function groupRows(cases) {
     map.get(key).cases.push(c);
   }
   return Array.from(map.values()).map((row) => {
+    const revenue = row.cases.reduce((sum, c) => sum + (Number(c.ltm_revenue_aed) || 0), 0);
     const recommended = row.cases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
     const average = avgScore(row.cases);
-    return { ...row, recommended, average };
+    return { ...row, revenue, recommended, average };
   });
 }
 
@@ -69,6 +71,8 @@ function regionSummary(cases, region) {
 export default function AnalyticsPage() {
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState('');
+  const [regionFilter, setRegionFilter] = useState('All');
+  const [mode, setMode] = useState('Recommended');
   const [state, setState] = useState('loading');
   const [msg, setMsg] = useState('');
 
@@ -87,13 +91,23 @@ export default function AnalyticsPage() {
     })();
   }, []);
 
-  const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
+  const regionCases = useMemo(() => {
+    if (regionFilter === 'All') return cases;
+    return cases.filter((c) => caseRegion(c) === regionFilter);
+  }, [cases, regionFilter]);
+  const visibleCases = useMemo(() => filterCasesByQuery(regionCases, query), [regionCases, query]);
   const groups = useMemo(() => groupRows(visibleCases), [visibleCases]);
   const statuses = useMemo(() => statusRows(visibleCases), [visibleCases]);
-  const regions = useMemo(() => ['USA', 'UAE'].map((r) => regionSummary(visibleCases, r)), [visibleCases]);
+  const regions = useMemo(() => {
+    const list = regionFilter === 'All' ? ['USA', 'UAE'] : [regionFilter];
+    return list.map((r) => regionSummary(visibleCases, r));
+  }, [visibleCases, regionFilter]);
   const maxStatus = Math.max(...statuses.map(([, count]) => count), 1);
   const maxGroupExposure = Math.max(...groups.map((g) => g.recommended), 1);
   const topGroups = [...groups].sort((a, b) => b.recommended - a.recommended).slice(0, 8);
+  const topRevenueGroups = [...groups].sort((a, b) => b.revenue - a.revenue).slice(0, 8);
+  const totalRecommended = visibleCases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
+  const totalRevenue = visibleCases.reduce((sum, c) => sum + (Number(c.ltm_revenue_aed) || 0), 0);
   const topVenues = [...visibleCases]
     .sort((a, b) => recommendedCeiling(b) - recommendedCeiling(a))
     .slice(0, 8);
@@ -106,12 +120,13 @@ export default function AnalyticsPage() {
       </p>
 
       <DashboardTabs />
+      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} mode={mode} onModeChange={setMode} />
 
       <CaseSearchBox
         value={query}
         onChange={setQuery}
         resultCount={visibleCases.length}
-        totalCount={cases.length}
+        totalCount={regionCases.length}
       />
 
       {state === 'loading' && <div style={empty}>Loading analytics...</div>}
@@ -139,6 +154,42 @@ export default function AnalyticsPage() {
                 <div style={caption}>Recommended lending amount</div>
               </div>
             ))}
+          </section>
+
+          <section style={twoCol}>
+            <div className="mz-card" style={{ minWidth: 0 }}>
+              <div className="mz-eyebrow">Disbursal Share by Group</div>
+              <div style={caption}>Total: {formatCurrencyAmount(totalRecommended, 'AED')}</div>
+              <div style={pieWrap}>
+                <div style={{ ...pie, background: pieBackground(topGroups, totalRecommended) }} />
+              </div>
+              <div style={legend}>
+                {topGroups.map((g, index) => (
+                  <span key={g.key} style={legendItem}>
+                    <span style={{ ...legendDot, background: chartColors[index % chartColors.length] }} />
+                    {g.group}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mz-card" style={{ minWidth: 0 }}>
+              <div className="mz-eyebrow">LTM Revenue by Group</div>
+              <div style={{ display: 'grid', gap: 11, marginTop: 14 }}>
+                {topRevenueGroups.length === 0 && <div style={caption}>No group revenue data available.</div>}
+                {topRevenueGroups.map((g, index) => (
+                  <div key={g.key}>
+                    <div style={barHeader}>
+                      <span style={{ color: 'var(--mz-text)', fontWeight: 900 }}>{g.group}</span>
+                      <span className="mz-mono">{formatCurrencyAmount(g.revenue, 'AED')}</span>
+                    </div>
+                    <div style={track}>
+                      <div style={{ ...bar, background: chartColors[index % chartColors.length], width: `${Math.max((g.revenue / Math.max(totalRevenue, 1)) * 100, 4)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
 
           <section style={twoCol}>
@@ -246,6 +297,19 @@ function MiniMetric({ label, value, color }) {
   );
 }
 
+function pieBackground(rows, total) {
+  if (!rows.length || !total) return 'var(--mz-card-nested)';
+  let cursor = 0;
+  const stops = rows.map((row, index) => {
+    const start = cursor;
+    const end = cursor + (row.recommended / total) * 100;
+    cursor = end;
+    return `${chartColors[index % chartColors.length]} ${start}% ${end}%`;
+  });
+  if (cursor < 100) stops.push(`var(--mz-card-nested) ${cursor}% 100%`);
+  return `conic-gradient(${stops.join(', ')})`;
+}
+
 const regionGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 16 };
 const metricRow = { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginTop: 12 };
 const twoCol = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 16 };
@@ -253,6 +317,11 @@ const caption = { color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' };
 const barHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 6 };
 const track = { height: 8, borderRadius: 999, background: 'var(--mz-card-nested)', overflow: 'hidden', border: '1px solid var(--mz-border-soft)' };
 const bar = { height: '100%', borderRadius: 999, background: 'var(--mz-accent)' };
+const pieWrap = { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 220 };
+const pie = { width: 190, height: 190, borderRadius: '50%', border: '1px solid var(--mz-border-soft)' };
+const legend = { display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8 };
+const legendItem = { display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--mz-text)', fontSize: 'var(--mz-fs-xs)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
+const legendDot = { width: 10, height: 10, borderRadius: 2, flexShrink: 0 };
 const empty = {
   padding: 18,
   borderRadius: 8,
@@ -276,3 +345,14 @@ const td = {
   borderBottom: '1px solid var(--mz-border-subtle)',
   color: 'var(--mz-text)',
 };
+
+const chartColors = [
+  'var(--mz-chart-1)',
+  'var(--mz-chart-2)',
+  'var(--mz-chart-9)',
+  'var(--mz-chart-5)',
+  'var(--mz-chart-10)',
+  'var(--mz-ai-accent)',
+  'var(--mz-chart-4)',
+  'var(--mz-chart-7)',
+];
