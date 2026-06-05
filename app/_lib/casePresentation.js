@@ -38,6 +38,37 @@ export function statusStyle(status) {
   return STATUS_STYLES[key] || STATUS_STYLES.new;
 }
 
+export function scoreColor(score) {
+  if (score === null || score === undefined || score === '') return 'var(--mz-muted)';
+  const value = Number(score);
+  if (!Number.isFinite(value)) return 'var(--mz-muted)';
+  if (value >= 90) return 'var(--mz-tier-excellent-plus)';
+  if (value >= 80) return 'var(--mz-tier-excellent)';
+  if (value >= 70) return 'var(--mz-tier-above-avg)';
+  if (value >= 60) return 'var(--mz-tier-average)';
+  if (value >= 50) return 'var(--mz-tier-below-avg)';
+  if (value >= 25) return 'var(--mz-tier-poor)';
+  return 'var(--mz-tier-critical)';
+}
+
+export function lendingAmountColor(amount) {
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value <= 0) return 'var(--mz-muted)';
+  if (value >= 1000000) return 'var(--mz-red-text)';
+  if (value >= 500000) return 'var(--mz-accent)';
+  if (value >= 250000) return 'var(--mz-tier-below-avg)';
+  if (value >= 100000) return 'var(--mz-tier-average)';
+  return 'var(--mz-tier-above-avg)';
+}
+
+export function formatCurrencyAmount(amount, currency = 'AED') {
+  const value = Number(amount || 0);
+  if (!value) return `${currency} 0`;
+  if (value >= 1e6) return `${currency} ${(value / 1e6).toFixed(2)}M`;
+  if (value >= 1e3) return `${currency} ${(value / 1e3).toFixed(1)}K`;
+  return `${currency} ${value.toLocaleString('en-AE')}`;
+}
+
 export function caseRegion(c) {
   const raw = String(c?.region || c?.country || c?.market || '').toUpperCase();
   if (raw.includes('US') || raw.includes('USA') || raw.includes('UNITED STATES')) return 'USA';

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import DashboardTabs from '../../_components/DashboardTabs';
 import StatusBadge from '../../_components/StatusBadge';
 import {
   caseGroup,
@@ -12,8 +13,10 @@ import {
   currencyForRegion,
   decisionText,
   formatTrackerDate,
+  lendingAmountColor,
   rationaleText,
   recommendedCeiling,
+  scoreColor,
   shortCaseRef,
   trackerDates,
 } from '../../_lib/casePresentation';
@@ -209,6 +212,8 @@ export default function GroupDashboardPage() {
         </p>
       </div>
 
+      <DashboardTabs />
+
       {state === 'error' && (
         <div style={errorBox}>Failed to load group: {msg}</div>
       )}
@@ -234,8 +239,8 @@ export default function GroupDashboardPage() {
 
           <section style={summaryGrid}>
             <MetricCard label="Venues" value={groupCases.length} sub={activeRegion} />
-            <MetricCard label="Average Score" value={averageScore == null ? '-' : averageScore.toFixed(1)} sub={best ? `Top: ${caseVenue(best)}` : 'No scored venues'} />
-            <MetricCard label="Recommended Lending Amount" value={formatMoney(recommended, currency)} sub="System recommendation from venue ceilings" accent />
+            <MetricCard label="Average Score" value={averageScore == null ? '-' : averageScore.toFixed(1)} sub={best ? `Top: ${caseVenue(best)}` : 'No scored venues'} valueColor={scoreColor(averageScore)} />
+            <MetricCard label="Recommended Lending Amount" value={formatMoney(recommended, currency)} sub="System recommendation from venue ceilings" valueColor={lendingAmountColor(recommended)} />
             <div className="mz-card" style={{ minWidth: 0 }}>
               <div className="mz-eyebrow">Final Lending Amount</div>
               <input
@@ -248,7 +253,7 @@ export default function GroupDashboardPage() {
                 placeholder={String(Math.round(recommended))}
                 style={{ width: '100%', marginTop: 8, height: 38 }}
               />
-              <div className="mz-mono" style={{ fontSize: 24, fontWeight: 900, color: 'var(--mz-accent)', marginTop: 8 }}>
+              <div className="mz-mono" style={{ fontSize: 24, fontWeight: 900, color: lendingAmountColor(finalAmount), marginTop: 8 }}>
                 {formatMoney(finalAmount, currency)}
               </div>
               <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)', marginTop: 6 }}>
@@ -339,8 +344,8 @@ export default function GroupDashboardPage() {
                         </td>
                         <td style={{ ...td, fontWeight: 800 }}>{caseVenue(c)}</td>
                         <td style={td}>{caseRegion(c)}</td>
-                        <td style={td} className="mz-mono">{c.score != null ? Number(c.score).toFixed(1) : '-'}</td>
-                        <td style={td} className="mz-mono">{formatMoney(ceiling, currency)}</td>
+                        <td style={{ ...td, color: scoreColor(c.score), fontWeight: 900 }} className="mz-mono">{c.score != null ? Number(c.score).toFixed(1) : '-'}</td>
+                        <td style={{ ...td, color: lendingAmountColor(ceiling), fontWeight: 900 }} className="mz-mono">{formatMoney(ceiling, currency)}</td>
                         <td style={td} className="mz-mono">{formatMoney(ceiling * 0.2, currency)}</td>
                         <td style={td}><StatusBadge status={c.status} /></td>
                         <td style={td}>{formatTrackerDate(dates.submitted)}</td>
@@ -358,11 +363,11 @@ export default function GroupDashboardPage() {
   );
 }
 
-function MetricCard({ label, value, sub, accent }) {
+function MetricCard({ label, value, sub, valueColor }) {
   return (
     <div className="mz-card" style={{ minWidth: 0 }}>
       <div className="mz-eyebrow">{label}</div>
-      <div className="mz-mono" style={{ fontSize: 28, fontWeight: 900, color: accent ? 'var(--mz-accent)' : 'var(--mz-text)', marginTop: 8 }}>
+      <div className="mz-mono" style={{ fontSize: 28, fontWeight: 900, color: valueColor || 'var(--mz-text)', marginTop: 8 }}>
         {value}
       </div>
       <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)', marginTop: 6 }}>{sub}</div>

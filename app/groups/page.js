@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import CaseSearchBox from '../_components/CaseSearchBox';
+import DashboardTabs from '../_components/DashboardTabs';
 import StatusBadge from '../_components/StatusBadge';
 import { filterCasesByQuery } from '../_lib/caseSearch';
 import {
@@ -11,7 +12,9 @@ import {
   caseRegion,
   caseVenue,
   currencyForRegion,
+  lendingAmountColor,
   recommendedCeiling,
+  scoreColor,
 } from '../_lib/casePresentation';
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -85,6 +88,8 @@ export default function GroupsPage() {
         Group-level lending dashboards for signed operators and their venues.
       </p>
 
+      <DashboardTabs />
+
       <CaseSearchBox
         value={query}
         onChange={setQuery}
@@ -134,8 +139,8 @@ export default function GroupsPage() {
                       <td style={td}>{row.region}</td>
                       <td style={td}>{row.cases.length}</td>
                       <td style={td}>{top ? caseVenue(top) : '-'}</td>
-                      <td style={td} className="mz-mono">{avgScore(row.cases)}</td>
-                      <td style={td} className="mz-mono">{money(recommended, currency)}</td>
+                      <td style={{ ...td, color: scoreColor(avgScore(row.cases)), fontWeight: 900 }} className="mz-mono">{avgScore(row.cases)}</td>
+                      <td style={{ ...td, color: lendingAmountColor(recommended), fontWeight: 900 }} className="mz-mono">{money(recommended, currency)}</td>
                       <td style={td}><StatusBadge status={groupStatus(row.cases)} /></td>
                       <td style={td}>
                         <Link

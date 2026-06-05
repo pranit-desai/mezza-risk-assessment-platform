@@ -6,9 +6,7 @@ import { useState } from "react";
 import SignOutButton from "./SignOutButton";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: "D" },
-  { href: "/groups", label: "Groups", icon: "G" },
-  { href: "/cases", label: "Cases", icon: "C" },
+  { href: "/", label: "Dashboard", icon: "D", matches: ["/", "/groups", "/cases", "/analytics"] },
   { href: "/banking", label: "Banking", icon: "B" },
 ];
 
@@ -35,6 +33,14 @@ export default function Sidebar() {
   const isActive = (href) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
+  };
+
+  const isItemActive = (item) => {
+    if (!item.matches) return isActive(item.href);
+    return item.matches.some((match) => {
+      if (match === "/") return pathname === "/";
+      return pathname === match || pathname.startsWith(`${match}/`);
+    });
   };
 
   return (
@@ -91,7 +97,7 @@ export default function Sidebar() {
 
       <nav style={{ flex: 1, padding: "12px 8px" }}>
         {NAV_ITEMS.map((item) => {
-          const active = isActive(item.href);
+          const active = isItemActive(item);
           return (
             <Link
               key={item.href}

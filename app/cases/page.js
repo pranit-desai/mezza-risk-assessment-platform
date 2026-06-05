@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CaseSearchBox from '../_components/CaseSearchBox';
+import DashboardTabs from '../_components/DashboardTabs';
 import StatusBadge from '../_components/StatusBadge';
 import { filterCasesByQuery } from '../_lib/caseSearch';
 import {
@@ -13,8 +14,10 @@ import {
   currencyForRegion,
   decisionText,
   formatTrackerDate,
+  lendingAmountColor,
   rationaleText,
   recommendedCeiling,
+  scoreColor,
   shortCaseRef,
   trackerDates,
 } from '../_lib/casePresentation';
@@ -33,6 +36,12 @@ function avgScore(cases) {
   const values = cases.map((c) => Number(c.score)).filter((n) => !Number.isNaN(n));
   if (!values.length) return '-';
   return (values.reduce((sum, n) => sum + n, 0) / values.length).toFixed(1);
+}
+
+function avgScoreNumber(cases) {
+  const values = cases.map((c) => Number(c.score)).filter((n) => !Number.isNaN(n));
+  if (!values.length) return null;
+  return values.reduce((sum, n) => sum + n, 0) / values.length;
 }
 
 function groupByRegionAndGroup(cases) {
@@ -82,6 +91,8 @@ export default function CasesPage() {
       <p style={{ color: '#e8a07a', marginTop: 6 }}>
         Group-first tracker for underwriting submissions, risk response, and final verdicts.
       </p>
+
+      <DashboardTabs />
 
       <CaseSearchBox
         value={query}
@@ -139,6 +150,7 @@ export default function CasesPage() {
                         const isOpen = !!expanded[key];
                         const currency = currencyForRegion(region);
                         const totalCeiling = rows.reduce((sum, c) => sum + recommendedCeiling(c), 0);
+                        const avg = avgScoreNumber(rows);
                         const leadStatus = rows.find((c) => c.status)?.status || 'new';
                         return (
                           <Fragment key={key}>
@@ -155,8 +167,8 @@ export default function CasesPage() {
                                 {group}
                               </td>
                               <td style={td}>{rows.length}</td>
-                              <td style={td} className="mz-mono">{avgScore(rows)}</td>
-                              <td style={td} className="mz-mono">{money(totalCeiling, currency)}</td>
+                              <td style={{ ...td, color: scoreColor(avg), fontWeight: 900 }} className="mz-mono">{avgScore(rows)}</td>
+                              <td style={{ ...td, color: lendingAmountColor(totalCeiling), fontWeight: 900 }} className="mz-mono">{money(totalCeiling, currency)}</td>
                               <td style={td}><StatusBadge status={leadStatus} /></td>
                               <td style={td}>-</td>
                               <td style={td}>-</td>
@@ -189,8 +201,8 @@ export default function CasesPage() {
                                     </button>
                                   </td>
                                   <td style={td}>1</td>
-                                  <td style={td} className="mz-mono">{c.score != null ? Number(c.score).toFixed(1) : '-'}</td>
-                                  <td style={td} className="mz-mono">{money(recommendedCeiling(c), currency)}</td>
+                                  <td style={{ ...td, color: scoreColor(c.score), fontWeight: 900 }} className="mz-mono">{c.score != null ? Number(c.score).toFixed(1) : '-'}</td>
+                                  <td style={{ ...td, color: lendingAmountColor(recommendedCeiling(c)), fontWeight: 900 }} className="mz-mono">{money(recommendedCeiling(c), currency)}</td>
                                   <td style={td}><StatusBadge status={c.status} /></td>
                                   <td style={td}>{formatTrackerDate(dates.submitted)}</td>
                                   <td style={td}>{formatTrackerDate(dates.firstResponse)}</td>

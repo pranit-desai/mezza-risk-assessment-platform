@@ -547,6 +547,16 @@ Checkpoint 2026-06-05:
 - embed analytics page
 - enhance analytics with time-to-decision, region, exposure, document, and bank coverage metrics
 
+Checkpoint 2026-06-05:
+
+- Dashboard module now uses internal section tabs: Summary, Groups, Tracker, Analytics.
+- Groups and Tracker are no longer presented as separate sidebar modules; they sit under the Dashboard module while retaining direct URLs.
+- Analytics tab added at `/analytics`.
+- Analytics includes region split, status funnel, highest exposure groups, and top venue recommendations.
+- Average score values use the risk score color tiers.
+- Recommended lending/ceiling values use exposure magnitude colors.
+- Summary, Groups, Tracker, Group Dashboard, and Analytics now share the same score and lending color helpers.
+
 ### Phase 6: Lending / Utilization
 
 - final lending amount workflow

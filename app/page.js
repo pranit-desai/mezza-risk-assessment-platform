@@ -3,32 +3,26 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import CaseSearchBox from "./_components/CaseSearchBox";
+import DashboardTabs from "./_components/DashboardTabs";
 import { filterCasesByQuery } from "./_lib/caseSearch";
+import {
+  formatCurrencyAmount,
+  lendingAmountColor,
+  recommendedCeiling,
+  scoreColor,
+} from "./_lib/casePresentation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 function fm(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  if (n >= 1e6) return "AED " + (n / 1e6).toFixed(2) + "M";
-  if (n >= 1e3) return "AED " + (n / 1e3).toFixed(1) + "K";
-  return "AED " + Number(n).toLocaleString("en-AE");
+  return formatCurrencyAmount(n, "AED");
 }
 
-function scoreColor(s) {
-  if (s == null) return "var(--mz-muted)";
-  if (s >= 90) return "var(--mz-tier-excellent-plus)";
-  if (s >= 80) return "var(--mz-tier-excellent)";
-  if (s >= 70) return "var(--mz-tier-above-avg)";
-  if (s >= 60) return "var(--mz-tier-average)";
-  if (s >= 50) return "var(--mz-tier-below-avg)";
-  if (s >= 25) return "var(--mz-tier-poor)";
-  return "var(--mz-tier-critical)";
-}
-
-function Tile({ label, value, accent }) {
+function Tile({ label, value, color }) {
   return (
     <div className="mz-card" style={{ flex: 1, minWidth: 0 }}>
-      <div className="mz-eyebrow" style={{ color: accent ? "var(--mz-accent)" : "var(--mz-muted)" }}>
+      <div className="mz-eyebrow" style={{ color: color ? "var(--mz-muted)" : "var(--mz-muted)" }}>
         {label}
       </div>
       <div
@@ -36,7 +30,7 @@ function Tile({ label, value, accent }) {
         style={{
           fontSize: "var(--mz-fs-stat)",
           fontWeight: 900,
-          color: accent ? "var(--mz-accent)" : "var(--mz-text)",
+          color: color || "var(--mz-text)",
           marginTop: 8,
         }}
       >
@@ -70,7 +64,7 @@ export default function Dashboard() {
   const totalCases = cases.length;
   const totalRev = cases.reduce(
     (s, c) => s + (Number(c.ltm_revenue_aed) || 0), 0);
-  const totalCeiling = cases.reduce((s, c) => s + (Number(c.ceiling_aed) || 0), 0);
+  const totalCeiling = cases.reduce((s, c) => s + recommendedCeiling(c), 0);
   const avgScore =
     totalCases > 0
       ? cases.reduce((s, c) => s + (Number(c.score) || 0), 0) / totalCases
@@ -93,10 +87,12 @@ export default function Dashboard() {
       </h1>
       <p
         className="mz-subheader"
-        style={{ margin: 0, marginBottom: 24 }}
+        style={{ margin: 0 }}
       >
         Live snapshot of every venue case in the risk pipeline.
       </p>
+
+      <DashboardTabs />
 
       <CaseSearchBox
         value={query}
@@ -107,9 +103,9 @@ export default function Dashboard() {
 
       <div style={{ display: "flex", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
         <Tile label="Total Cases" value={totalCases} />
-        <Tile label="Avg Score" value={avgScore > 0 ? avgScore.toFixed(1) : "—"} />
+        <Tile label="Avg Score" value={avgScore > 0 ? avgScore.toFixed(1) : "—"} color={scoreColor(avgScore)} />
         <Tile label="Total LTM Revenue" value={fm(totalRev)} />
-        <Tile label="Total Ceiling" value={fm(totalCeiling)} accent />
+        <Tile label="Recommended Ceiling" value={fm(totalCeiling)} color={lendingAmountColor(totalCeiling)} />
       </div>
 
       <div className="mz-card" style={{ padding: 0, overflow: "hidden" }}>
@@ -163,7 +159,7 @@ export default function Dashboard() {
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
               <thead>
                 <tr style={{ background: "var(--mz-card-subtle)" }}>
-                  {["Case Ref", "Venue", "Group", "Score", "Grade", "Ceiling (AED)", "Status"].map((h) => (
+                  {["Case Ref", "Venue", "Group", "Score", "Grade", "Recommended Ceiling", "Status"].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -192,7 +188,7 @@ export default function Dashboard() {
                   >
                     <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)" }}>
                       <Link
-                        href={`/cases/${c.case_ref || c.id}`}
+                        href={`/cases/${c.id}`}
                         className="mz-mono"
                         style={{
                           color: "var(--mz-accent)",
@@ -241,10 +237,10 @@ export default function Dashboard() {
                         padding: "12px 16px",
                         fontSize: "var(--mz-fs-sm)",
                         fontWeight: 700,
-                        color: "var(--mz-accent)",
+                        color: lendingAmountColor(recommendedCeiling(c)),
                       }}
                     >
-                      {fm(c.ceiling_aed)}
+                      {fm(recommendedCeiling(c))}
                     </td>
                     <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)", color: "var(--mz-muted)" }}>
                       {c.status || "—"}
