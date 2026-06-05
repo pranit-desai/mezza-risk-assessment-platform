@@ -1,11 +1,13 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import CaseSearchBox from "./_components/CaseSearchBox";
-import DashboardTabs from "./_components/DashboardTabs";
 import { filterCasesByQuery } from "./_lib/caseSearch";
 import {
+  caseGroup,
+  caseRegion,
   formatCurrencyAmount,
   lendingAmountColor,
   recommendedCeiling,
@@ -14,33 +16,76 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-function fm(n) {
+function money(n, currency) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return formatCurrencyAmount(n, "AED");
+  return formatCurrencyAmount(n, currency);
 }
 
-function Tile({ label, value, color }) {
+function gradeForScore(score) {
+  const value = Number(score);
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  if (value >= 80) return "A";
+  if (value >= 70) return "B+";
+  if (value >= 60) return "B";
+  if (value >= 50) return "C";
+  return "NM";
+}
+
+function pct(n) {
+  const value = Number(n || 0);
+  return `${value.toFixed(1)}%`;
+}
+
+function StatCard({ label, value, color, sub, featured }) {
   return (
-    <div className="mz-card" style={{ flex: 1, minWidth: 0 }}>
-      <div className="mz-eyebrow" style={{ color: color ? "var(--mz-muted)" : "var(--mz-muted)" }}>
+    <div className="mz-card" style={{ ...statCard, borderColor: featured ? "var(--mz-accent-40)" : "rgba(80, 50, 38, 0.48)" }}>
+      <div className="mz-eyebrow" style={{ color: featured ? "var(--mz-accent)" : "var(--mz-muted)" }}>
         {label}
       </div>
       <div
         className="mz-mono"
         style={{
-          fontSize: "var(--mz-fs-stat)",
+          fontSize: 29,
           fontWeight: 900,
           color: color || "var(--mz-text)",
-          marginTop: 8,
+          marginTop: 10,
+          lineHeight: 1.05,
         }}
       >
         {value}
       </div>
+      {sub && <div style={{ color: "var(--mz-muted)", fontSize: "var(--mz-fs-xs)", marginTop: 7 }}>{sub}</div>}
     </div>
   );
 }
 
+function groupRows(cases) {
+  const map = new Map();
+  for (const c of cases) {
+    const group = caseGroup(c);
+    if (!map.has(group)) map.set(group, []);
+    map.get(group).push(c);
+  }
+  return Array.from(map.entries()).map(([group, rows], index) => {
+    const revenue = rows.reduce((sum, c) => sum + (Number(c.ltm_revenue_aed) || 0), 0);
+    const disbursal = rows.reduce((sum, c) => sum + recommendedCeiling(c), 0);
+    const scoreValues = rows.map((c) => Number(c.score)).filter((n) => Number.isFinite(n));
+    const score = scoreValues.length ? scoreValues.reduce((sum, n) => sum + n, 0) / scoreValues.length : null;
+    return { group, rows, revenue, disbursal, score, color: chartColors[index % chartColors.length] };
+  }).sort((a, b) => b.disbursal - a.disbursal);
+}
+
 export default function Dashboard() {
+  return (
+    <Suspense fallback={<div style={pageWrap} />}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const region = (searchParams.get("region") || "All").toUpperCase();
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -61,38 +106,45 @@ export default function Dashboard() {
     })();
   }, []);
 
-  const totalCases = cases.length;
-  const totalRev = cases.reduce(
+  const regionCases = useMemo(() => {
+    if (region === "ALL") return cases;
+    return cases.filter((c) => caseRegion(c) === region);
+  }, [cases, region]);
+  const visibleCases = useMemo(() => filterCasesByQuery(regionCases, query), [regionCases, query]);
+  const groups = useMemo(() => groupRows(visibleCases), [visibleCases]);
+  const displayCurrency = region === "USA" ? "USD" : "AED";
+
+  const totalCases = visibleCases.length;
+  const totalGroups = groups.length;
+  const totalRev = visibleCases.reduce(
     (s, c) => s + (Number(c.ltm_revenue_aed) || 0), 0);
-  const totalCeiling = cases.reduce((s, c) => s + recommendedCeiling(c), 0);
+  const totalCeiling = visibleCases.reduce((s, c) => s + recommendedCeiling(c), 0);
   const avgScore =
     totalCases > 0
-      ? cases.reduce((s, c) => s + (Number(c.score) || 0), 0) / totalCases
+      ? visibleCases.reduce((s, c) => s + (Number(c.score) || 0), 0) / totalCases
       : 0;
-  const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
 
   return (
-    <div style={{ padding: "28px 24px" }}>
-      <h1
-        style={{
-          fontSize: "var(--mz-fs-h1)",
-          fontWeight: 900,
-          color: "var(--mz-text-on-page)",
-          margin: 0,
-          marginBottom: 6,
-          letterSpacing: "-0.3px",
-        }}
-      >
-        Portfolio Overview
-      </h1>
-      <p
-        className="mz-subheader"
-        style={{ margin: 0 }}
-      >
-        Live snapshot of every venue case in the risk pipeline.
-      </p>
+    <div style={pageWrap}>
+      <section style={statsGrid}>
+        <StatCard label="Groups" value={totalGroups} />
+        <StatCard label="Venues" value={totalCases} />
+        <StatCard label="Total Revenue" value={money(totalRev, displayCurrency)} />
+        <StatCard label="Portfolio Mezza" value={`${avgScore > 0 ? avgScore.toFixed(1) : "—"} / ${gradeForScore(avgScore)}`} color={scoreColor(avgScore)} />
+        <StatCard
+          label="Total Disbursal (Recommended)"
+          value={money(totalCeiling, displayCurrency)}
+          color="var(--mz-accent)"
+          sub={`${totalRev ? pct((totalCeiling / totalRev) * 100) : "0.0%"} of LTM`}
+          featured
+        />
+      </section>
 
-      <DashboardTabs />
+      <div style={subControls}>
+        <button className="mz-clickable active" style={smallPill}>By Group</button>
+        <button className="mz-clickable" style={smallPill}>By Grade</button>
+        <button className="mz-clickable" style={smallPill}>Monthly Approvals</button>
+      </div>
 
       <CaseSearchBox
         value={query}
@@ -101,22 +153,14 @@ export default function Dashboard() {
         totalCount={cases.length}
       />
 
-      <div style={{ display: "flex", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
-        <Tile label="Total Cases" value={totalCases} />
-        <Tile label="Avg Score" value={avgScore > 0 ? avgScore.toFixed(1) : "—"} color={scoreColor(avgScore)} />
-        <Tile label="Total LTM Revenue" value={fm(totalRev)} />
-        <Tile label="Recommended Ceiling" value={fm(totalCeiling)} color={lendingAmountColor(totalCeiling)} />
-      </div>
-
-      <div className="mz-card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="mz-card" style={{ padding: 0, overflow: "hidden", borderColor: "rgba(80, 50, 38, 0.48)" }}>
         <div
           style={{
-            padding: "14px 22px",
+            padding: "18px 22px",
             borderBottom: "1px solid var(--mz-accent-15)",
-            background: "linear-gradient(90deg, var(--mz-accent-06), transparent)",
           }}
         >
-          <span className="mz-eyebrow">Cases</span>
+          <span className="mz-eyebrow">Group Disbursal Breakdown</span>
         </div>
 
         {loading && (
@@ -142,7 +186,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {!loading && !error && cases.length === 0 && (
+        {!loading && !error && regionCases.length === 0 && (
           <div style={{ padding: 28, color: "var(--mz-muted)", fontSize: "var(--mz-fs-sm)" }}>
             No cases found.
           </div>
@@ -156,10 +200,10 @@ export default function Dashboard() {
 
         {!loading && visibleCases.length > 0 && (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
               <thead>
-                <tr style={{ background: "var(--mz-card-subtle)" }}>
-                  {["Case Ref", "Venue", "Group", "Score", "Grade", "Recommended Ceiling", "Status"].map((h) => (
+                <tr>
+                  {["Group", "Revenue", "Mezza", "Type", "Disbursal", "% of Rev"].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -179,74 +223,58 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {visibleCases.map((c) => (
+                {groups.map((g) => (
                   <tr
-                    key={c.id}
+                    key={g.group}
                     style={{
                       borderBottom: "1px solid var(--mz-border-subtle)",
                     }}
                   >
-                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)" }}>
-                      <Link
-                        href={`/cases/${c.id}`}
-                        className="mz-mono"
-                        style={{
-                          color: "var(--mz-accent)",
-                          fontWeight: 700,
-                          transition: "color 0.15s",
-                        }}
-                      >
-                        {c.case_ref || c.id.slice(0, 8)}
+                    <td style={{ padding: "14px 16px", fontSize: "var(--mz-fs-sm)", color: "var(--mz-text)", fontWeight: 900 }}>
+                      <span style={{ ...dot, background: g.color }} />
+                      <Link href={`/groups/${encodeURIComponent(g.group.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))}`}>
+                        {g.group}
                       </Link>
                     </td>
-                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)", color: "var(--mz-text)", fontWeight: 600 }}>
-                      {c.venue_name || "—"}
-                    </td>
-                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)", color: "var(--mz-muted)" }}>
-                      {c.group_name || "—"}
+                    <td className="mz-mono" style={tableCell}>
+                      {money(g.revenue, displayCurrency)}
                     </td>
                     <td
                       className="mz-mono"
                       style={{
-                        padding: "12px 16px",
-                        fontSize: "var(--mz-fs-body)",
-                        fontWeight: 800,
-                        color: scoreColor(c.score),
+                        ...tableCell,
+                        color: scoreColor(g.score),
+                        fontWeight: 900,
                       }}
                     >
-                      {c.score != null ? Number(c.score).toFixed(1) : "—"}
+                      {g.score == null ? "—" : `${g.score.toFixed(1)} ${gradeForScore(g.score)}`}
                     </td>
-                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)" }}>
-                      <span
-                        style={{
-                          padding: "3px 10px",
-                          borderRadius: 6,
-                          background: scoreColor(c.score) + "25",
-                          color: scoreColor(c.score),
-                          fontWeight: 700,
-                          fontSize: "var(--mz-fs-xs)",
-                          border: "1px solid " + scoreColor(c.score) + "40",
-                        }}
-                      >
-                        {c.grade || "—"}
-                      </span>
+                    <td style={{ ...tableCell, color: "var(--mz-accent)", fontWeight: 900 }}>
+                      Recommended
                     </td>
                     <td
                       className="mz-mono"
                       style={{
-                        padding: "12px 16px",
-                        fontSize: "var(--mz-fs-sm)",
-                        fontWeight: 700,
-                        color: lendingAmountColor(recommendedCeiling(c)),
+                        ...tableCell,
+                        fontWeight: 900,
+                        color: lendingAmountColor(g.disbursal),
                       }}
                     >
-                      {fm(recommendedCeiling(c))}
+                      {money(g.disbursal, displayCurrency)}
                     </td>
-                    <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)", color: "var(--mz-muted)" }}>
-                      {c.status || "—"}
+                    <td className="mz-mono" style={{ ...tableCell, color: "var(--mz-muted)" }}>
+                      {g.revenue ? pct((g.disbursal / g.revenue) * 100) : "0.0%"}
                     </td>
                   </tr>
                 ))}
+                <tr>
+                  <td style={{ ...tableCell, color: "var(--mz-accent)", fontWeight: 900 }}>Total</td>
+                  <td className="mz-mono" style={{ ...tableCell, color: "var(--mz-accent)", fontWeight: 900 }}>{money(totalRev, displayCurrency)}</td>
+                  <td style={tableCell}>-</td>
+                  <td style={tableCell}>-</td>
+                  <td className="mz-mono" style={{ ...tableCell, color: "var(--mz-accent)", fontWeight: 900 }}>{money(totalCeiling, displayCurrency)}</td>
+                  <td className="mz-mono" style={{ ...tableCell, color: "var(--mz-muted)" }}>{totalRev ? pct((totalCeiling / totalRev) * 100) : "0.0%"}</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -255,3 +283,64 @@ export default function Dashboard() {
     </div>
   );
 }
+
+const pageWrap = {
+  maxWidth: 1400,
+  margin: "0 auto",
+  padding: "20px 26px 40px",
+};
+
+const statsGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+  gap: 12,
+  marginBottom: 20,
+};
+
+const statCard = {
+  minHeight: 138,
+  borderRadius: 12,
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+};
+
+const subControls = {
+  display: "flex",
+  gap: 8,
+  marginBottom: 10,
+};
+
+const smallPill = {
+  height: 28,
+  minWidth: 80,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: 11,
+};
+
+const tableCell = {
+  padding: "14px 16px",
+  fontSize: "var(--mz-fs-sm)",
+  color: "var(--mz-text)",
+};
+
+const dot = {
+  display: "inline-block",
+  width: 10,
+  height: 10,
+  borderRadius: 3,
+  marginRight: 10,
+};
+
+const chartColors = [
+  "var(--mz-chart-1)",
+  "var(--mz-chart-2)",
+  "var(--mz-chart-9)",
+  "var(--mz-chart-5)",
+  "var(--mz-chart-10)",
+  "var(--mz-ai-accent)",
+  "var(--mz-chart-4)",
+  "var(--mz-chart-7)",
+];

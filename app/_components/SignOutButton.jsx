@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowser } from '@/lib/supabaseBrowser';
 
-export default function SignOutButton({ collapsed }) {
+export default function SignOutButton({ collapsed, compact = false, style }) {
   const router = useRouter();
 
   async function signOut() {
@@ -18,13 +18,14 @@ export default function SignOutButton({ collapsed }) {
       onClick={signOut}
       className="mz-clickable"
       style={{
-        margin: collapsed ? '0 12px 8px' : '0 12px 8px',
-        padding: 8,
-        width: collapsed ? 40 : 'auto',
+        margin: compact ? 0 : (collapsed ? '0 12px 8px' : '0 12px 8px'),
+        padding: compact ? '6px 10px' : 8,
+        width: collapsed && !compact ? 40 : 'auto',
+        ...style,
       }}
       title="Sign out"
     >
-      {collapsed ? 'X' : 'Sign out'}
+      {collapsed && !compact ? 'X' : 'Sign out'}
     </button>
   );
 }

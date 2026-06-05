@@ -1,9 +1,8 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Fragment, Suspense, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import CaseSearchBox from '../_components/CaseSearchBox';
-import DashboardTabs from '../_components/DashboardTabs';
 import StatusBadge from '../_components/StatusBadge';
 import { filterCasesByQuery } from '../_lib/caseSearch';
 import {
@@ -56,7 +55,17 @@ function groupByRegionAndGroup(cases) {
 }
 
 export default function CasesPage() {
+  return (
+    <Suspense fallback={<div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 26px 40px' }} />}>
+      <CasesContent />
+    </Suspense>
+  );
+}
+
+function CasesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const regionFilter = (searchParams.get('region') || 'All').toUpperCase();
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState({});
@@ -78,21 +87,26 @@ export default function CasesPage() {
     })();
   }, []);
 
-  const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
+  const regionCases = useMemo(() => {
+    if (regionFilter === 'ALL') return cases;
+    return cases.filter((c) => caseRegion(c) === regionFilter);
+  }, [cases, regionFilter]);
+  const visibleCases = useMemo(() => filterCasesByQuery(regionCases, query), [regionCases, query]);
   const grouped = useMemo(() => groupByRegionAndGroup(visibleCases), [visibleCases]);
+  const summaryCurrency = regionFilter === 'USA' ? 'USD' : 'AED';
 
   function toggle(key) {
     setExpanded((current) => ({ ...current, [key]: !current[key] }));
   }
 
   return (
-    <div style={{ padding: '32px 40px', color: '#f5f1ea' }}>
-      <h1 style={{ fontSize: 34, fontWeight: 800, margin: 0 }}>Cases</h1>
-      <p style={{ color: '#e8a07a', marginTop: 6 }}>
-        Group-first tracker for underwriting submissions, risk response, and final verdicts.
-      </p>
-
-      <DashboardTabs />
+    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 26px 40px', color: 'var(--mz-text-on-page)' }}>
+      <section style={trackerStats}>
+        <TrackerStat label="Total Cases" value={visibleCases.length} />
+        <TrackerStat label="Total Lending" value={money(visibleCases.reduce((sum, c) => sum + recommendedCeiling(c), 0), summaryCurrency)} color="var(--mz-accent)" />
+        <TrackerStat label="Total Pilot" value={money(visibleCases.reduce((sum, c) => sum + recommendedCeiling(c) * 0.2, 0), summaryCurrency)} color="var(--mz-green-text)" />
+        <TrackerStat label="Disbursed" value={`0 / ${visibleCases.length}`} color="var(--mz-green-text)" />
+      </section>
 
       <CaseSearchBox
         value={query}
@@ -116,13 +130,14 @@ export default function CasesPage() {
       {state === 'ok' && visibleCases.length > 0 && (
         <div style={{ display: 'grid', gap: 20 }}>
           {['USA', 'UAE'].map((region) => {
+            if (regionFilter !== 'ALL' && region !== regionFilter) return null;
             const regionGroups = Array.from(grouped[region].entries());
             if (!regionGroups.length) return null;
             return (
-              <section key={region} className="mz-card" style={{ padding: 0, overflow: 'hidden' }}>
+              <section key={region} className="mz-card" style={{ padding: 0, overflow: 'hidden', borderColor: 'rgba(80, 50, 38, 0.48)' }}>
                 <div style={sectionHeader}>
                   <div>
-                    <div className="mz-eyebrow">{region}</div>
+                    <div className="mz-eyebrow">Deal Tracker / Pipeline</div>
                     <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)', marginTop: 4 }}>
                       {regionGroups.length} groups / {regionGroups.reduce((sum, [, rows]) => sum + rows.length, 0)} venues
                     </div>
@@ -232,6 +247,24 @@ export default function CasesPage() {
     </div>
   );
 }
+
+function TrackerStat({ label, value, color }) {
+  return (
+    <div className="mz-card" style={{ minHeight: 110, borderColor: 'rgba(80, 50, 38, 0.48)' }}>
+      <div className="mz-eyebrow" style={{ color: 'var(--mz-muted)' }}>{label}</div>
+      <div className="mz-mono" style={{ marginTop: 10, fontSize: 28, fontWeight: 900, color: color || 'var(--mz-text)' }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+const trackerStats = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: 12,
+  marginBottom: 20,
+};
 
 const sectionHeader = {
   padding: '16px 20px',

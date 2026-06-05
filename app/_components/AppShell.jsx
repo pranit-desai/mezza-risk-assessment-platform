@@ -1,10 +1,10 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import ApiStatusPill from './ApiStatusPill';
-import Sidebar from './Sidebar';
+import { Suspense } from 'react';
+import TopCommandBar from './TopCommandBar';
 
-const PUBLIC_FULL_PAGE_PREFIXES = ['/connect'];
+const PUBLIC_FULL_PAGE_PREFIXES = ['/connect', '/login'];
 
 export default function AppShell({ children }) {
   const pathname = usePathname();
@@ -15,20 +15,11 @@ export default function AppShell({ children }) {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--mz-page)' }}>
-      <Sidebar />
-      <main style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            padding: '12px 24px',
-            borderBottom: '1px solid var(--mz-border-on-page)',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            background: 'var(--mz-page)',
-          }}
-        >
-          <ApiStatusPill />
-        </div>
+    <div style={{ minHeight: '100vh', background: 'var(--mz-page)' }}>
+      <Suspense fallback={null}>
+        <TopCommandBar />
+      </Suspense>
+      <main style={{ minWidth: 0 }}>
         {children}
       </main>
     </div>

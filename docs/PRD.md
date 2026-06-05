@@ -557,6 +557,17 @@ Checkpoint 2026-06-05:
 - Recommended lending/ceiling values use exposure magnitude colors.
 - Summary, Groups, Tracker, Group Dashboard, and Analytics now share the same score and lending color helpers.
 
+Checkpoint 2026-06-05:
+
+- App shell changed toward the reference platform layout: top black MEZZA command bar, light workspace canvas, black data cards.
+- Primary top navigation now reads `Portfolio`, `Tracker`, `Analytics`.
+- Global region controls are available in the command bar: `All`, `UAE`, `USA`.
+- Portfolio, Tracker, Groups, and Analytics respect the selected region query parameter.
+- Portfolio page now mirrors the reference structure more closely: KPI card row, by-group controls, and group disbursal breakdown table.
+- Analytics page now includes a reference-style KPI row, disbursal share pie, LTM revenue by group bars, status funnel, exposure groups, and venue recommendations.
+- Tracker page now starts with lending/pilot/disbursal KPI cards before the pipeline table.
+- Left sidebar has been removed from the main authenticated app shell; Banking remains accessible by direct route for now and should be reintroduced into the command bar or an operations menu when ready.
+
 ### Phase 6: Lending / Utilization
 
 - final lending amount workflow
