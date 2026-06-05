@@ -12,6 +12,18 @@ function isMissingTable(error) {
   return error?.code === '42P01' || String(error?.message || '').includes(TABLE);
 }
 
+function needsSetup(error) {
+  const message = String(error?.message || '');
+  return (
+    isMissingTable(error) ||
+    error?.code === '42703' ||
+    error?.code === 'PGRST204' ||
+    message.includes('custom_amount') ||
+    message.includes('effective_amount') ||
+    message.toLowerCase().includes('schema cache')
+  );
+}
+
 async function requireUser() {
   const supabase = await createSupabaseServer();
   const {
@@ -98,12 +110,14 @@ export async function POST(req) {
   const currency = cleanCurrency(body.currency, region);
   const recommendedAmount = numberOrZero(body.recommendedAmount);
   const finalAmount = numberOrZero(body.finalAmount);
+  const customAmount = numberOrZero(body.customAmount);
+  const effectiveAmount = customAmount > 0 ? customAmount : finalAmount;
   const pilotPercent = body.pilotPercent === undefined ? 20 : numberOrZero(body.pilotPercent);
 
   if (!groupKey || !groupName || !region) {
     return NextResponse.json({ error: 'groupKey, groupName, and region are required' }, { status: 400 });
   }
-  if (recommendedAmount < 0 || finalAmount < 0 || pilotPercent < 0 || pilotPercent > 100) {
+  if (recommendedAmount < 0 || finalAmount < 0 || customAmount < 0 || effectiveAmount < 0 || pilotPercent < 0 || pilotPercent > 100) {
     return NextResponse.json({ error: 'amounts must be positive and pilotPercent must be 0-100' }, { status: 400 });
   }
 
@@ -114,6 +128,8 @@ export async function POST(req) {
     currency,
     recommended_amount: recommendedAmount,
     final_amount: finalAmount,
+    custom_amount: customAmount,
+    effective_amount: effectiveAmount,
     pilot_percent: pilotPercent,
     notes: String(body.notes || '').trim() || null,
     updated_by: user.id,
@@ -127,7 +143,7 @@ export async function POST(req) {
     .single();
 
   if (error) {
-    if (isMissingTable(error)) return setupRequiredResponse();
+    if (needsSetup(error)) return setupRequiredResponse();
     logSupabaseError('Group lending settings save failed', error, { groupKey, region });
     return NextResponse.json({ error: 'settings save failed' }, { status: 500 });
   }

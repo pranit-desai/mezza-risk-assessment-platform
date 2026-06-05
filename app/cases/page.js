@@ -61,7 +61,6 @@ export default function CasesPage() {
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState('');
   const [regionFilter, setRegionFilter] = useState('All');
-  const [mode, setMode] = useState('Recommended');
   const [expanded, setExpanded] = useState({});
   const [state, setState] = useState('loading');
   const [msg, setMsg] = useState('');
@@ -102,7 +101,7 @@ export default function CasesPage() {
       </p>
 
       <DashboardTabs />
-      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} mode={mode} onModeChange={setMode} />
+      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} />
 
       <section style={trackerStats}>
         <TrackerStat label="Total Cases" value={visibleCases.length} />

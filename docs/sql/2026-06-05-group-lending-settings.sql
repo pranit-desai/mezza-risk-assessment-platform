@@ -6,9 +6,11 @@ create table if not exists public.group_lending_settings (
   currency text not null check (currency in ('USD', 'AED')),
   recommended_amount numeric(14, 2) not null default 0,
   final_amount numeric(14, 2) not null default 0,
+  custom_amount numeric(14, 2) not null default 0,
+  effective_amount numeric(14, 2) not null default 0,
   pilot_percent numeric(5, 2) not null default 20,
-  pilot_amount numeric(14, 2) generated always as (round(final_amount * pilot_percent / 100, 2)) stored,
-  quarterly_capacity numeric(14, 2) generated always as (greatest(final_amount - round(final_amount * pilot_percent / 100, 2), 0)) stored,
+  pilot_amount numeric(14, 2) generated always as (round((case when custom_amount > 0 then custom_amount else final_amount end) * pilot_percent / 100, 2)) stored,
+  quarterly_capacity numeric(14, 2) generated always as (greatest((case when custom_amount > 0 then custom_amount else final_amount end) - round((case when custom_amount > 0 then custom_amount else final_amount end) * pilot_percent / 100, 2), 0)) stored,
   notes text,
   updated_by uuid,
   updated_by_email text,
@@ -16,6 +18,12 @@ create table if not exists public.group_lending_settings (
   updated_at timestamptz not null default now(),
   unique (group_key, region)
 );
+
+alter table public.group_lending_settings
+  add column if not exists custom_amount numeric(14, 2) not null default 0;
+
+alter table public.group_lending_settings
+  add column if not exists effective_amount numeric(14, 2) not null default 0;
 
 create index if not exists group_lending_settings_region_idx
   on public.group_lending_settings (region);

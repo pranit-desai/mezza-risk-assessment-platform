@@ -12,16 +12,16 @@ export const STATUS_LABELS = {
 };
 
 export const STATUS_STYLES = {
-  new: { bg: 'rgba(255,255,255,0.05)', border: 'var(--mz-border-input)', color: 'var(--mz-muted)' },
+  new: { bg: 'rgba(255,255,255,0.05)', border: 'var(--mz-border-input)', color: 'var(--mz-text)' },
   uploading: { bg: 'rgba(139, 92, 246, 0.14)', border: 'rgba(139, 92, 246, 0.4)', color: 'var(--mz-ai-accent)' },
   extracting: { bg: 'rgba(59, 130, 246, 0.14)', border: 'rgba(59, 130, 246, 0.4)', color: 'var(--mz-chart-9)' },
-  data_bank_ready: { bg: 'var(--mz-green-bg)', border: 'var(--mz-green-border)', color: 'var(--mz-green-text)' },
-  under_review: { bg: 'var(--mz-amber-bg)', border: 'var(--mz-amber-border)', color: 'var(--mz-amber-text)' },
-  additional_documents_requested: { bg: 'rgba(224, 136, 0, 0.18)', border: 'rgba(224, 136, 0, 0.5)', color: 'var(--mz-tier-below-avg)' },
+  data_bank_ready: { bg: 'rgba(82, 200, 176, 0.14)', border: 'rgba(82, 200, 176, 0.42)', color: 'var(--mz-tier-above-avg)' },
+  under_review: { bg: 'rgba(212, 168, 0, 0.14)', border: 'rgba(212, 168, 0, 0.45)', color: 'var(--mz-amber-text)' },
+  additional_documents_requested: { bg: 'rgba(236, 72, 153, 0.14)', border: 'rgba(236, 72, 153, 0.45)', color: 'var(--mz-chart-10)' },
   approved: { bg: 'var(--mz-green-bg)', border: 'var(--mz-green-border)', color: 'var(--mz-green-text)' },
-  declined: { bg: 'var(--mz-red-bg)', border: 'var(--mz-red-border)', color: 'var(--mz-red-text)' },
-  rejected: { bg: 'var(--mz-red-bg)', border: 'var(--mz-red-border)', color: 'var(--mz-red-text)' },
-  expired: { bg: 'var(--mz-red-bg)', border: 'var(--mz-red-border)', color: 'var(--mz-red-text)' },
+  declined: { bg: 'rgba(212, 90, 0, 0.16)', border: 'rgba(212, 90, 0, 0.45)', color: 'var(--mz-tier-poor)' },
+  rejected: { bg: 'rgba(212, 48, 48, 0.14)', border: 'rgba(212, 48, 48, 0.45)', color: 'var(--mz-red-text)' },
+  expired: { bg: 'rgba(139, 130, 118, 0.14)', border: 'rgba(139, 130, 118, 0.42)', color: 'var(--mz-muted)' },
 };
 
 export function normalizeStatus(status) {
@@ -30,7 +30,12 @@ export function normalizeStatus(status) {
 
 export function statusLabel(status) {
   const key = normalizeStatus(status);
-  return STATUS_LABELS[key] || String(status || 'New');
+  if (STATUS_LABELS[key]) return STATUS_LABELS[key];
+  return String(status || 'New')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export function statusStyle(status) {
@@ -160,6 +165,18 @@ export function rationaleText(c) {
     c?.decision_rationale ||
     c?.risk_rationale ||
     c?.rationale ||
+    c?.extracted_json?.risk_committee?.rationale ||
+    ''
+  );
+}
+
+export function riskNotesText(c) {
+  return (
+    c?.risk_committee_notes ||
+    c?.committee_notes ||
+    c?.risk_notes ||
+    c?.notes ||
+    c?.extracted_json?.risk_committee?.notes ||
     c?.extracted_json?.risk_committee?.rationale ||
     ''
   );

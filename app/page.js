@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import CaseSearchBox from "./_components/CaseSearchBox";
 import DashboardControls from "./_components/DashboardControls";
 import DashboardTabs from "./_components/DashboardTabs";
+import StatusBadge from "./_components/StatusBadge";
 import { filterCasesByQuery } from "./_lib/caseSearch";
 import {
   caseGroup,
@@ -57,7 +58,6 @@ export default function Dashboard() {
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState("All");
-  const [mode, setMode] = useState("Recommended");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -113,7 +113,7 @@ export default function Dashboard() {
       </p>
 
       <DashboardTabs />
-      <DashboardControls region={region} onRegionChange={setRegion} mode={mode} onModeChange={setMode} />
+      <DashboardControls region={region} onRegionChange={setRegion} />
 
       <CaseSearchBox
         value={query}
@@ -127,7 +127,7 @@ export default function Dashboard() {
         <Tile label="Venues" value={totalCases} />
         <Tile label="Total LTM Revenue" value={fm(totalRev)} />
         <Tile label="Portfolio Mezza" value={`${avgScore > 0 ? avgScore.toFixed(1) : "—"} / ${gradeForScore(avgScore)}`} color={scoreColor(avgScore)} />
-        <Tile label={`Total Disbursal (${mode})`} value={fm(totalCeiling)} color={lendingAmountColor(totalCeiling)} />
+        <Tile label="Total Disbursal" value={fm(totalCeiling)} color={lendingAmountColor(totalCeiling)} />
       </div>
 
       <div className="mz-card" style={{ padding: 0, overflow: "hidden" }}>
@@ -265,7 +265,7 @@ export default function Dashboard() {
                       {fm(recommendedCeiling(c))}
                     </td>
                     <td style={{ padding: "12px 16px", fontSize: "var(--mz-fs-sm)", color: "var(--mz-muted)" }}>
-                      {c.status || "—"}
+                      <StatusBadge status={c.status} />
                     </td>
                   </tr>
                 ))}

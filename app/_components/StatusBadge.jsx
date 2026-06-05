@@ -1,7 +1,8 @@
 import { statusLabel, statusStyle } from '../_lib/casePresentation';
 
-export default function StatusBadge({ status }) {
-  const style = statusStyle(status);
+export default function StatusBadge({ status, value }) {
+  const badgeStatus = status ?? value;
+  const style = statusStyle(badgeStatus);
   return (
     <span
       style={{
@@ -16,7 +17,7 @@ export default function StatusBadge({ status }) {
         whiteSpace: 'nowrap',
       }}
     >
-      {statusLabel(status)}
+      {statusLabel(badgeStatus)}
     </span>
   );
 }

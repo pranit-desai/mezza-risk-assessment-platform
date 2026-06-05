@@ -62,7 +62,6 @@ export default function GroupsPage() {
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState('');
   const [regionFilter, setRegionFilter] = useState('All');
-  const [mode, setMode] = useState('Recommended');
   const [state, setState] = useState('loading');
   const [msg, setMsg] = useState('');
 
@@ -96,7 +95,7 @@ export default function GroupsPage() {
       </p>
 
       <DashboardTabs />
-      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} mode={mode} onModeChange={setMode} />
+      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} />
 
       <CaseSearchBox
         value={query}

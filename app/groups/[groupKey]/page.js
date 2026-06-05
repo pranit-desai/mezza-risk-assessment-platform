@@ -16,6 +16,7 @@ import {
   lendingAmountColor,
   rationaleText,
   recommendedCeiling,
+  riskNotesText,
   scoreColor,
   shortCaseRef,
   trackerDates,
@@ -64,6 +65,12 @@ function formatSavedAt(value) {
   });
 }
 
+function shortNote(value, max = 140) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  return text.length > max ? `${text.slice(0, max - 1)}...` : text;
+}
+
 export default function GroupDashboardPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -75,6 +82,7 @@ export default function GroupDashboardPage() {
   const [msg, setMsg] = useState('');
   const [region, setRegion] = useState(initialRegion);
   const [finalAmountOverrides, setFinalAmountOverrides] = useState({});
+  const [customAmountOverrides, setCustomAmountOverrides] = useState({});
   const [settingsByKey, setSettingsByKey] = useState({});
   const [settingsLoadByKey, setSettingsLoadByKey] = useState({});
   const [saveStateByKey, setSaveStateByKey] = useState({});
@@ -154,13 +162,21 @@ export default function GroupDashboardPage() {
   const finalAmountText = finalAmountOverrides[settingKey] ?? (
     savedSetting?.final_amount != null ? String(Number(savedSetting.final_amount)) : ''
   );
+  const customAmountText = customAmountOverrides[settingKey] ?? (
+    savedSetting?.custom_amount != null && Number(savedSetting.custom_amount) > 0
+      ? String(Number(savedSetting.custom_amount))
+      : ''
+  );
   const recommended = groupCases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
   const finalAmount = finalAmountText.trim() === '' ? recommended : Number(finalAmountText) || 0;
-  const pilot = finalAmount * 0.2;
-  const remaining = Math.max(finalAmount - pilot, 0);
+  const customAmount = Number(customAmountText) || 0;
+  const effectiveAmount = customAmount > 0 ? customAmount : finalAmount;
+  const pilot = effectiveAmount * 0.2;
+  const remaining = Math.max(effectiveAmount - pilot, 0);
   const best = topVenue(groupCases);
   const averageScore = avg(groupCases.map((c) => c.score));
   const rationale = groupCases.map(rationaleText).find(Boolean);
+  const riskNotes = groupCases.map(riskNotesText).find(Boolean);
 
   async function saveFinalAmount() {
     setSaveStateByKey((current) => ({ ...current, [settingKey]: { status: 'saving' } }));
@@ -175,6 +191,8 @@ export default function GroupDashboardPage() {
           currency,
           recommendedAmount: recommended,
           finalAmount,
+          customAmount,
+          effectiveAmount,
           pilotPercent: 20,
         }),
       });
@@ -185,6 +203,11 @@ export default function GroupDashboardPage() {
       }
       setSettingsByKey((current) => ({ ...current, [settingKey]: data.setting }));
       setFinalAmountOverrides((current) => {
+        const next = { ...current };
+        delete next[settingKey];
+        return next;
+      });
+      setCustomAmountOverrides((current) => {
         const next = { ...current };
         delete next[settingKey];
         return next;
@@ -256,8 +279,27 @@ export default function GroupDashboardPage() {
               <div className="mz-mono" style={{ fontSize: 24, fontWeight: 900, color: lendingAmountColor(finalAmount), marginTop: 8 }}>
                 {formatMoney(finalAmount, currency)}
               </div>
-              <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)', marginTop: 6 }}>
-                Manual override field for the current review.
+              <div style={{ marginTop: 12 }}>
+                <div className="mz-eyebrow" style={{ color: 'var(--mz-muted)' }}>Custom Amount</div>
+                <input
+                  type="number"
+                  value={customAmountText}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCustomAmountOverrides((current) => ({ ...current, [settingKey]: value }));
+                  }}
+                  placeholder="0"
+                  style={{ width: '100%', marginTop: 8, height: 38 }}
+                />
+              </div>
+              <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)', marginTop: 8 }}>
+                Custom overrides final when greater than zero.
+              </div>
+              <div style={effectiveBox}>
+                <div className="mz-eyebrow" style={{ color: 'var(--mz-muted)' }}>Effective Lending Amount</div>
+                <div className="mz-mono" style={{ fontSize: 22, fontWeight: 900, color: lendingAmountColor(effectiveAmount), marginTop: 4 }}>
+                  {formatMoney(effectiveAmount, currency)}
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
                 <button
@@ -298,7 +340,7 @@ export default function GroupDashboardPage() {
                 <MiniStat label="Quarterly Top-Up Capacity" value={formatMoney(remaining, currency)} />
               </div>
               <p style={mutedCopy}>
-                The pilot is calculated as 20% of the final lending amount. Remaining exposure can be released
+                The pilot is calculated as 20% of the effective lending amount. Remaining exposure can be released
                 quarterly up to the outstanding approved amount, subject to usage and risk review.
               </p>
             </div>
@@ -309,6 +351,12 @@ export default function GroupDashboardPage() {
               <p style={mutedCopy}>
                 {rationale || 'No committee rationale is attached yet. Once captured on the case, it will surface here and on the tracker.'}
               </p>
+              <div style={{ marginTop: 14 }}>
+                <div className="mz-eyebrow" style={{ color: 'var(--mz-muted)' }}>Risk Committee Notes</div>
+                <p style={{ ...mutedCopy, marginTop: 8 }}>
+                  {riskNotes || 'No committee notes are attached yet for this group.'}
+                </p>
+              </div>
             </div>
           </section>
 
@@ -329,12 +377,14 @@ export default function GroupDashboardPage() {
                     <th style={th}>Status</th>
                     <th style={th}>Submitted</th>
                     <th style={th}>Decision</th>
+                    <th style={th}>Risk Notes</th>
                   </tr>
                 </thead>
                 <tbody>
                   {groupCases.map((c) => {
                     const dates = trackerDates(c);
                     const ceiling = recommendedCeiling(c);
+                    const notes = riskNotesText(c);
                     return (
                       <tr key={c.id}>
                         <td style={td} className="mz-mono">
@@ -350,6 +400,7 @@ export default function GroupDashboardPage() {
                         <td style={td}><StatusBadge status={c.status} /></td>
                         <td style={td}>{formatTrackerDate(dates.submitted)}</td>
                         <td style={td}>{decisionText(c)}</td>
+                        <td style={{ ...td, color: 'var(--mz-muted)', maxWidth: 280 }}>{shortNote(notes) || '-'}</td>
                       </tr>
                     );
                   })}
@@ -396,6 +447,13 @@ const summaryGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, mi
 const twoCol = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 16 };
 const mutedCopy = { color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-sm)', lineHeight: 1.7, margin: '12px 0 0' };
 const savedMetaStyle = { color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' };
+const effectiveBox = {
+  marginTop: 10,
+  padding: '10px 12px',
+  borderRadius: 8,
+  background: 'var(--mz-card-nested)',
+  border: '1px solid var(--mz-border-soft)',
+};
 const saveNoticeStyle = {
   border: '1px solid',
   borderRadius: 8,

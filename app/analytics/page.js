@@ -68,11 +68,30 @@ function regionSummary(cases, region) {
   };
 }
 
+function gradeBand(score) {
+  const value = Number(score);
+  if (!Number.isFinite(value) || value <= 0) return 'NM';
+  if (value >= 80) return 'A';
+  if (value >= 70) return 'B+';
+  if (value >= 60) return 'B';
+  if (value >= 50) return 'C';
+  return 'NM';
+}
+
+function scoreBandRows(cases) {
+  const order = ['A', 'B+', 'B', 'C', 'NM'];
+  const counts = new Map(order.map((label) => [label, 0]));
+  for (const c of cases) {
+    const label = gradeBand(c.score);
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+  return order.map((label) => ({ label, count: counts.get(label) || 0 }));
+}
+
 export default function AnalyticsPage() {
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState('');
   const [regionFilter, setRegionFilter] = useState('All');
-  const [mode, setMode] = useState('Recommended');
   const [state, setState] = useState('loading');
   const [msg, setMsg] = useState('');
 
@@ -108,6 +127,14 @@ export default function AnalyticsPage() {
   const topRevenueGroups = [...groups].sort((a, b) => b.revenue - a.revenue).slice(0, 8);
   const totalRecommended = visibleCases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
   const totalRevenue = visibleCases.reduce((sum, c) => sum + (Number(c.ltm_revenue_aed) || 0), 0);
+  const scoreBands = scoreBandRows(visibleCases);
+  const maxScoreBand = Math.max(...scoreBands.map((row) => row.count), 1);
+  const lendingRatioGroups = [...groups]
+    .filter((g) => g.revenue > 0 && g.recommended > 0)
+    .map((g) => ({ ...g, ratio: g.recommended / g.revenue }))
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, 8);
+  const maxLendingRatio = Math.max(...lendingRatioGroups.map((g) => g.ratio), 0.01);
   const topVenues = [...visibleCases]
     .sort((a, b) => recommendedCeiling(b) - recommendedCeiling(a))
     .slice(0, 8);
@@ -120,7 +147,7 @@ export default function AnalyticsPage() {
       </p>
 
       <DashboardTabs />
-      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} mode={mode} onModeChange={setMode} />
+      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} />
 
       <CaseSearchBox
         value={query}
@@ -231,6 +258,49 @@ export default function AnalyticsPage() {
                   );
                 })}
                 {topGroups.length === 0 && <div style={caption}>No group exposure data available.</div>}
+              </div>
+            </div>
+          </section>
+
+          <section style={twoCol}>
+            <div className="mz-card" style={{ minWidth: 0 }}>
+              <div className="mz-eyebrow">Score Distribution</div>
+              <div style={{ display: 'grid', gap: 11, marginTop: 14 }}>
+                {scoreBands.map((row) => {
+                  const proxyScore = row.label === 'A' ? 85 : row.label === 'B+' ? 75 : row.label === 'B' ? 65 : row.label === 'C' ? 55 : 35;
+                  return (
+                    <div key={row.label}>
+                      <div style={barHeader}>
+                        <span className="mz-mono" style={{ color: scoreColor(proxyScore), fontWeight: 900 }}>{row.label}</span>
+                        <span className="mz-mono">{row.count}</span>
+                      </div>
+                      <div style={track}>
+                        <div style={{ ...bar, background: scoreColor(proxyScore), width: `${Math.max((row.count / maxScoreBand) * 100, row.count ? 4 : 0)}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mz-card" style={{ minWidth: 0 }}>
+              <div className="mz-eyebrow">Lending to Revenue</div>
+              <div style={caption}>Recommended amount as a percentage of LTM revenue.</div>
+              <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+                {lendingRatioGroups.map((g) => (
+                  <Link key={g.key} href={`/groups/${slugifyGroupName(g.group)}?region=${g.region}`}>
+                    <div style={barHeader}>
+                      <span style={{ color: 'var(--mz-text)', fontWeight: 900 }}>{g.group}</span>
+                      <span className="mz-mono" style={{ color: lendingAmountColor(g.recommended), fontWeight: 900 }}>
+                        {(g.ratio * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div style={track}>
+                      <div style={{ ...bar, background: lendingAmountColor(g.recommended), width: `${Math.max((g.ratio / maxLendingRatio) * 100, 4)}%` }} />
+                    </div>
+                  </Link>
+                ))}
+                {lendingRatioGroups.length === 0 && <div style={caption}>No revenue-backed lending ratio data available.</div>}
               </div>
             </div>
           </section>
