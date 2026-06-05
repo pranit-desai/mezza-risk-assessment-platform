@@ -517,6 +517,15 @@ Checkpoint 2026-06-05:
 - Final lending amount is currently an analyst-facing override field in the UI only. Persistent storage and permissions should move into a group lending settings table/API before this becomes a formal approval record.
 - The old P1/P2/disbursement tracker concept is not carried forward. It is replaced by the policy view: 20% pilot plus remaining quarterly top-up capacity.
 
+Checkpoint 2026-06-05:
+
+- Group dashboard final lending amount now has a protected save/load API: `/api/group-lending`.
+- Required Supabase SQL is stored at `docs/sql/2026-06-05-group-lending-settings.sql`.
+- The saved record is keyed by `group_key + region`, because USA and UAE approvals must not share currency or limits.
+- Saved fields include recommended amount, final amount, currency, pilot percent, generated pilot amount, generated quarterly capacity, updater email, and timestamps.
+- The app handles missing SQL setup explicitly and tells the analyst which SQL file to run.
+- This is the current approval setting only. A full immutable decision history/audit log remains a later hardening task.
+
 ### Phase 3: Document Workflow
 
 - document expiry monitor

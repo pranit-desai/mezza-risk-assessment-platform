@@ -19,6 +19,7 @@ import {
 } from '../../_lib/casePresentation';
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL;
+const SETTINGS_API = '/api/group-lending';
 
 function formatMoney(n, currency) {
   const value = Number(n || 0);
@@ -48,6 +49,18 @@ function topVenue(cases) {
     .sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0))[0];
 }
 
+function formatSavedAt(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default function GroupDashboardPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -59,6 +72,9 @@ export default function GroupDashboardPage() {
   const [msg, setMsg] = useState('');
   const [region, setRegion] = useState(initialRegion);
   const [finalAmountOverrides, setFinalAmountOverrides] = useState({});
+  const [settingsByKey, setSettingsByKey] = useState({});
+  const [settingsLoadByKey, setSettingsLoadByKey] = useState({});
+  const [saveStateByKey, setSaveStateByKey] = useState({});
 
   useEffect(() => {
     (async () => {
@@ -86,12 +102,55 @@ export default function GroupDashboardPage() {
   }, [groupCasesAll]);
   const activeRegion = availableRegions.includes(region) ? region : (availableRegions[0] || 'UAE');
   const currency = currencyForRegion(activeRegion);
+  const settingKey = `${groupKey || 'unknown'}:${activeRegion}`;
 
   const groupCases = useMemo(() => {
     return groupCasesAll.filter((c) => caseRegion(c) === activeRegion);
   }, [groupCasesAll, activeRegion]);
 
-  const finalAmountText = finalAmountOverrides[activeRegion] || '';
+  useEffect(() => {
+    if (!groupKey || !activeRegion || !groupCasesAll.length) return;
+    let cancelled = false;
+
+    (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setSettingsLoadByKey((current) => ({ ...current, [settingKey]: { status: 'loading' } }));
+      try {
+        const url = `${SETTINGS_API}?groupKey=${encodeURIComponent(groupKey)}&region=${encodeURIComponent(activeRegion)}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Status ${res.status}`);
+        if (cancelled) return;
+        if (data.setting) {
+          setSettingsByKey((current) => ({ ...current, [settingKey]: data.setting }));
+        }
+        setSettingsLoadByKey((current) => ({
+          ...current,
+          [settingKey]: data.setupRequired
+            ? { status: 'setup', message: `Run ${data.sqlFile}` }
+            : { status: 'ready' },
+        }));
+      } catch (e) {
+        if (cancelled) return;
+        setSettingsLoadByKey((current) => ({
+          ...current,
+          [settingKey]: { status: 'error', message: e.message || 'Failed to load saved amount' },
+        }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [groupKey, activeRegion, settingKey, groupCasesAll.length]);
+
+  const savedSetting = settingsByKey[settingKey];
+  const loadState = settingsLoadByKey[settingKey];
+  const saveState = saveStateByKey[settingKey];
+  const finalAmountText = finalAmountOverrides[settingKey] ?? (
+    savedSetting?.final_amount != null ? String(Number(savedSetting.final_amount)) : ''
+  );
   const recommended = groupCases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
   const finalAmount = finalAmountText.trim() === '' ? recommended : Number(finalAmountText) || 0;
   const pilot = finalAmount * 0.2;
@@ -99,6 +158,42 @@ export default function GroupDashboardPage() {
   const best = topVenue(groupCases);
   const averageScore = avg(groupCases.map((c) => c.score));
   const rationale = groupCases.map(rationaleText).find(Boolean);
+
+  async function saveFinalAmount() {
+    setSaveStateByKey((current) => ({ ...current, [settingKey]: { status: 'saving' } }));
+    try {
+      const res = await fetch(SETTINGS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          groupKey,
+          groupName,
+          region: activeRegion,
+          currency,
+          recommendedAmount: recommended,
+          finalAmount,
+          pilotPercent: 20,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const suffix = data.sqlFile ? ` Run ${data.sqlFile}.` : '';
+        throw new Error(`${data.error || `Status ${res.status}`}.${suffix}`);
+      }
+      setSettingsByKey((current) => ({ ...current, [settingKey]: data.setting }));
+      setFinalAmountOverrides((current) => {
+        const next = { ...current };
+        delete next[settingKey];
+        return next;
+      });
+      setSaveStateByKey((current) => ({ ...current, [settingKey]: { status: 'saved', message: 'Saved' } }));
+    } catch (e) {
+      setSaveStateByKey((current) => ({
+        ...current,
+        [settingKey]: { status: 'error', message: e.message || 'Failed to save' },
+      }));
+    }
+  }
 
   return (
     <div style={{ padding: '28px 24px', color: 'var(--mz-text-on-page)' }}>
@@ -148,7 +243,7 @@ export default function GroupDashboardPage() {
                 value={finalAmountText}
                 onChange={(e) => {
                   const value = e.target.value;
-                  setFinalAmountOverrides((current) => ({ ...current, [activeRegion]: value }));
+                  setFinalAmountOverrides((current) => ({ ...current, [settingKey]: value }));
                 }}
                 placeholder={String(Math.round(recommended))}
                 style={{ width: '100%', marginTop: 8, height: 38 }}
@@ -159,6 +254,34 @@ export default function GroupDashboardPage() {
               <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)', marginTop: 6 }}>
                 Manual override field for the current review.
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={saveFinalAmount}
+                  disabled={saveState?.status === 'saving'}
+                  className="mz-clickable active"
+                  style={{ padding: '7px 10px', opacity: saveState?.status === 'saving' ? 0.65 : 1 }}
+                >
+                  {saveState?.status === 'saving' ? 'Saving...' : 'Save amount'}
+                </button>
+                <span style={savedMetaStyle}>
+                  {savedSetting
+                    ? `Saved ${formatSavedAt(savedSetting.updated_at)}${savedSetting.updated_by_email ? ` by ${savedSetting.updated_by_email}` : ''}`
+                    : loadState?.status === 'loading'
+                      ? 'Checking saved amount...'
+                      : 'Not saved yet'}
+                </span>
+              </div>
+              {(loadState?.status === 'setup' || loadState?.status === 'error' || saveState?.status === 'error' || saveState?.status === 'saved') && (
+                <div style={{
+                  ...saveNoticeStyle,
+                  color: saveState?.status === 'saved' ? 'var(--mz-green-text)' : 'var(--mz-amber-text)',
+                  borderColor: saveState?.status === 'saved' ? 'var(--mz-green-border)' : 'var(--mz-amber-border)',
+                  background: saveState?.status === 'saved' ? 'var(--mz-green-bg)' : 'var(--mz-amber-bg)',
+                }}>
+                  {saveState?.message || loadState?.message}
+                </div>
+              )}
             </div>
           </section>
 
@@ -267,6 +390,15 @@ const tabs = { display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' };
 const summaryGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 16 };
 const twoCol = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 16 };
 const mutedCopy = { color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-sm)', lineHeight: 1.7, margin: '12px 0 0' };
+const savedMetaStyle = { color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' };
+const saveNoticeStyle = {
+  border: '1px solid',
+  borderRadius: 8,
+  padding: '8px 10px',
+  fontSize: 'var(--mz-fs-xs)',
+  lineHeight: 1.5,
+  marginTop: 10,
+};
 const errorBox = { padding: 16, borderRadius: 8, background: 'var(--mz-red-bg)', border: '1px solid var(--mz-red-border)', color: 'var(--mz-red-text)' };
 const emptyBox = { padding: 16, borderRadius: 8, background: 'var(--mz-card)', border: '1px solid var(--mz-border)', color: 'var(--mz-muted)' };
 const th = {
