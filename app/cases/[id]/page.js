@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import StatusBadge from "../../_components/StatusBadge";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -29,22 +30,10 @@ function scoreColor(s) {
 // are NOT shown as buttons — they appear only as the current status label.
 const ANALYST_STATUSES = [
   { value: "under_review", label: "Under Review" },
+  { value: "additional_documents_requested", label: "Additional Documents Requested" },
   { value: "approved", label: "Approved" },
   { value: "declined", label: "Declined" },
 ];
-
-// Human-readable mapping for any status value (analyst or system)
-const STATUS_LABELS = {
-  new: "New",
-  uploading: "Uploading",
-  extracting: "Extracting",
-  data_bank_ready: "Data Bank Ready",
-  under_review: "Under Review",
-  approved: "Approved",
-  declined: "Declined",
-  rejected: "Rejected (auto)",
-  expired: "Expired",
-};
 
 function KpiCard({ label, value, sub, color, danger, mono }) {
   const accent = danger ? "var(--mz-tier-critical)" : color || "var(--mz-accent)";
@@ -96,7 +85,11 @@ export default function CaseOverviewPage() {
   }, [caseId]);
 
   useEffect(() => {
-    if (caseId) load();
+    if (!caseId) return undefined;
+    const timer = setTimeout(() => {
+      load();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [caseId, load]);
 
   async function updateStatus(newStatus) {
@@ -166,8 +159,6 @@ export default function CaseOverviewPage() {
   }
 
   const crossChecks = caseData.extracted_json?.cross_checks || {};
-  const currentStatusLabel = STATUS_LABELS[caseData.status] || caseData.status || "—";
-
   return (
     <div style={{ padding: "28px 24px" }}>
       <Link
@@ -276,7 +267,7 @@ export default function CaseOverviewPage() {
             </div>
           </div>
           <div style={{ fontSize: "var(--mz-fs-xs)", color: "var(--mz-muted)" }}>
-            Current: <span style={{ color: "var(--mz-text)", fontWeight: 700 }}>{currentStatusLabel}</span>
+            Current: <StatusBadge status={caseData.status} />
           </div>
         </div>
 
@@ -303,7 +294,7 @@ export default function CaseOverviewPage() {
 
         <div style={{ marginTop: 16, fontSize: "var(--mz-fs-xs)", color: "var(--mz-muted)", lineHeight: 1.6 }}>
           <strong style={{ color: "var(--mz-accent-peach)" }}>System-set states</strong> (not clickable here):
-          {" "}new, uploading, extracting, data_bank_ready, rejected (auto-policy), expired.
+          {" "}new, uploading, extracting, data_bank_ready, additional_documents_requested, rejected (auto-policy), expired.
           {" "}Use the Data Bank to trigger ingestion-stage transitions.
         </div>
       </div>

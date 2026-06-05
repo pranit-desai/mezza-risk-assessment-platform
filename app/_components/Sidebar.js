@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import SignOutButton from "./SignOutButton";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "D" },
@@ -123,6 +124,8 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      <SignOutButton collapsed={collapsed} />
 
       <button
         onClick={toggle}
