@@ -44,8 +44,30 @@ export function caseRegion(c) {
   return 'UAE';
 }
 
+export function currencyForRegion(region) {
+  return String(region || '').toUpperCase() === 'USA' ? 'USD' : 'AED';
+}
+
+export function caseCurrency(c) {
+  const raw = String(c?.currency || c?.lending_currency || c?.ceiling_currency || '').toUpperCase();
+  if (raw === 'USD' || raw === 'AED') return raw;
+  return currencyForRegion(caseRegion(c));
+}
+
 export function caseGroup(c) {
   return c?.group_name || c?.group || c?.operator_group || 'Ungrouped';
+}
+
+export function slugifyGroupName(groupName) {
+  return String(groupName || 'ungrouped')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'ungrouped';
+}
+
+export function caseGroupSlug(c) {
+  return slugifyGroupName(caseGroup(c));
 }
 
 export function caseVenue(c) {
@@ -109,5 +131,36 @@ export function rationaleText(c) {
     c?.rationale ||
     c?.extracted_json?.risk_committee?.rationale ||
     ''
+  );
+}
+
+export function recommendedCeiling(c) {
+  return (
+    Number(c?.recommended_lending_amount) ||
+    Number(c?.recommended_lending_amount_usd) ||
+    Number(c?.recommended_lending_amount_aed) ||
+    Number(c?.recommended_ceiling) ||
+    Number(c?.recommended_ceiling_usd) ||
+    Number(c?.recommended_ceiling_aed) ||
+    Number(c?.ceiling) ||
+    Number(c?.ceiling_usd) ||
+    Number(c?.ceiling_aed) ||
+    Number(c?.extracted_json?.credit_score?.ceiling_used_usd) ||
+    Number(c?.extracted_json?.credit_score?.ceiling_used_aed) ||
+    Number(c?.extracted_json?.credit_score?.ceiling_risk_category_usd) ||
+    Number(c?.extracted_json?.credit_score?.ceiling_risk_category_aed) ||
+    0
+  );
+}
+
+export function finalLendingAmount(c) {
+  return (
+    Number(c?.final_lending_amount) ||
+    Number(c?.final_lending_amount_usd) ||
+    Number(c?.final_lending_amount_aed) ||
+    Number(c?.approved_lending_amount) ||
+    Number(c?.approved_lending_amount_usd) ||
+    Number(c?.approved_lending_amount_aed) ||
+    0
   );
 }

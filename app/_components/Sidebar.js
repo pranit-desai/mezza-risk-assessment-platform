@@ -7,6 +7,7 @@ import SignOutButton from "./SignOutButton";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "D" },
+  { href: "/groups", label: "Groups", icon: "G" },
   { href: "/cases", label: "Cases", icon: "C" },
   { href: "/banking", label: "Banking", icon: "B" },
 ];

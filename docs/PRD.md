@@ -507,6 +507,16 @@ Checkpoint 2026-06-05:
 - venue-level expandable tracker rows
 - recommended vs final lending amount
 
+Checkpoint 2026-06-05:
+
+- Sidebar now includes a `Groups` surface for signed operator groups.
+- `/groups` lists groups by region, venue count, top venue, average score, recommended lending amount, and status.
+- `/groups/[groupKey]` provides a group-level dashboard aligned to the reference platform pattern: group summary first, lending recommendation, final lending amount, committee decision/rationale, and venue analytics underneath.
+- Group dashboards use USA/UAE region tabs rather than mixing currencies in one summary.
+- USA lending amounts display as USD and UAE lending amounts display as AED.
+- Final lending amount is currently an analyst-facing override field in the UI only. Persistent storage and permissions should move into a group lending settings table/API before this becomes a formal approval record.
+- The old P1/P2/disbursement tracker concept is not carried forward. It is replaced by the policy view: 20% pilot plus remaining quarterly top-up capacity.
+
 ### Phase 3: Document Workflow
 
 - document expiry monitor

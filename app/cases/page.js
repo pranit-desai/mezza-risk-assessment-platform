@@ -7,23 +7,26 @@ import StatusBadge from '../_components/StatusBadge';
 import { filterCasesByQuery } from '../_lib/caseSearch';
 import {
   caseGroup,
+  caseGroupSlug,
   caseRegion,
   caseVenue,
+  currencyForRegion,
   decisionText,
   formatTrackerDate,
   rationaleText,
+  recommendedCeiling,
   shortCaseRef,
   trackerDates,
 } from '../_lib/casePresentation';
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-function money(n) {
+function money(n, currency = 'AED') {
   const value = Number(n || 0);
   if (!value) return '-';
-  if (value >= 1e6) return `AED ${(value / 1e6).toFixed(2)}M`;
-  if (value >= 1e3) return `AED ${(value / 1e3).toFixed(1)}K`;
-  return `AED ${value.toLocaleString('en-AE')}`;
+  if (value >= 1e6) return `${currency} ${(value / 1e6).toFixed(2)}M`;
+  if (value >= 1e3) return `${currency} ${(value / 1e3).toFixed(1)}K`;
+  return `${currency} ${value.toLocaleString('en-AE')}`;
 }
 
 function avgScore(cases) {
@@ -134,7 +137,8 @@ export default function CasesPage() {
                       {regionGroups.map(([group, rows]) => {
                         const key = `${region}:${group}`;
                         const isOpen = !!expanded[key];
-                        const totalCeiling = rows.reduce((sum, c) => sum + (Number(c.ceiling_aed) || 0), 0);
+                        const currency = currencyForRegion(region);
+                        const totalCeiling = rows.reduce((sum, c) => sum + recommendedCeiling(c), 0);
                         const leadStatus = rows.find((c) => c.status)?.status || 'new';
                         return (
                           <Fragment key={key}>
@@ -152,12 +156,20 @@ export default function CasesPage() {
                               </td>
                               <td style={td}>{rows.length}</td>
                               <td style={td} className="mz-mono">{avgScore(rows)}</td>
-                              <td style={td} className="mz-mono">{money(totalCeiling)}</td>
+                              <td style={td} className="mz-mono">{money(totalCeiling, currency)}</td>
                               <td style={td}><StatusBadge status={leadStatus} /></td>
                               <td style={td}>-</td>
                               <td style={td}>-</td>
                               <td style={td}>-</td>
-                              <td style={{ ...td, color: 'var(--mz-muted)' }}>Expand for venues</td>
+                              <td style={td}>
+                                <button
+                                  onClick={() => router.push(`/groups/${caseGroupSlug(rows[0])}?region=${region}`)}
+                                  className="mz-clickable"
+                                  style={{ padding: '6px 10px' }}
+                                >
+                                  Open group
+                                </button>
+                              </td>
                             </tr>
 
                             {isOpen && rows.map((c) => {
@@ -178,7 +190,7 @@ export default function CasesPage() {
                                   </td>
                                   <td style={td}>1</td>
                                   <td style={td} className="mz-mono">{c.score != null ? Number(c.score).toFixed(1) : '-'}</td>
-                                  <td style={td} className="mz-mono">{money(c.ceiling_aed)}</td>
+                                  <td style={td} className="mz-mono">{money(recommendedCeiling(c), currency)}</td>
                                   <td style={td}><StatusBadge status={c.status} /></td>
                                   <td style={td}>{formatTrackerDate(dates.submitted)}</td>
                                   <td style={td}>{formatTrackerDate(dates.firstResponse)}</td>
