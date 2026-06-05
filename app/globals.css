@@ -11,7 +11,7 @@
 
 :root {
   /* ─── BACKGROUNDS ───────────────────────────────── */
-  --mz-page:           #f4f1ed;     /* warm workspace canvas */
+  --mz-page:           #1c1917;     /* warm graphite */
   --mz-card:           #000000;     /* pure black */
   --mz-card-nested:    #0a0a0a;     /* one notch up from card for inputs */
   --mz-card-subtle:    #050505;     /* hover-on-card */
@@ -29,9 +29,9 @@
 
   /* ─── TEXT ──────────────────────────────────────── */
   --mz-text:           #f5f0e8;     /* warm off-white — never pure white */
-  --mz-text-on-page:   #171412;     /* text on light workspace canvas */
+  --mz-text-on-page:   #f5f0e8;     /* same on warm graphite page */
   --mz-muted:          #8b8276;     /* secondary text */
-  --mz-muted-on-page:  #6f665b;
+  --mz-muted-on-page:  #8b8276;
 
   /* ─── BORDERS ───────────────────────────────────── */
   --mz-border:         rgba(255, 255, 255, 0.06);  /* card borders, subtle */

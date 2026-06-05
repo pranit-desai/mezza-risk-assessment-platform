@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import CaseSearchBox from '../_components/CaseSearchBox';
+import DashboardTabs from '../_components/DashboardTabs';
 import StatusBadge from '../_components/StatusBadge';
 import { filterCasesByQuery } from '../_lib/caseSearch';
 import {
@@ -58,16 +58,6 @@ function groupRows(cases) {
 }
 
 export default function GroupsPage() {
-  return (
-    <Suspense fallback={<div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 26px 40px' }} />}>
-      <GroupsContent />
-    </Suspense>
-  );
-}
-
-function GroupsContent() {
-  const searchParams = useSearchParams();
-  const regionFilter = (searchParams.get('region') || 'All').toUpperCase();
   const [cases, setCases] = useState([]);
   const [query, setQuery] = useState('');
   const [state, setState] = useState('loading');
@@ -88,19 +78,17 @@ function GroupsContent() {
     })();
   }, []);
 
-  const regionCases = useMemo(() => {
-    if (regionFilter === 'ALL') return cases;
-    return cases.filter((c) => caseRegion(c) === regionFilter);
-  }, [cases, regionFilter]);
-  const visibleCases = useMemo(() => filterCasesByQuery(regionCases, query), [regionCases, query]);
+  const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
   const rows = useMemo(() => groupRows(visibleCases), [visibleCases]);
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 26px 40px', color: 'var(--mz-text-on-page)' }}>
+    <div style={{ padding: '32px 40px', color: 'var(--mz-text-on-page)' }}>
       <h1 style={{ fontSize: 34, fontWeight: 900, margin: 0 }}>Groups</h1>
       <p style={{ color: 'var(--mz-accent)', marginTop: 6 }}>
         Group-level lending dashboards for signed operators and their venues.
       </p>
+
+      <DashboardTabs />
 
       <CaseSearchBox
         value={query}

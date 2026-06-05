@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import DashboardTabs from '../../_components/DashboardTabs';
 import StatusBadge from '../../_components/StatusBadge';
 import {
   caseGroup,
@@ -198,7 +199,7 @@ export default function GroupDashboardPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 26px 40px', color: 'var(--mz-text-on-page)' }}>
+    <div style={{ padding: '28px 24px', color: 'var(--mz-text-on-page)' }}>
       <Link href="/cases" style={backLink}>Back to Cases</Link>
 
       <div style={{ marginTop: 18, marginBottom: 18 }}>
@@ -210,6 +211,8 @@ export default function GroupDashboardPage() {
           Lending recommendation, committee view, and venue-level underwriting analytics.
         </p>
       </div>
+
+      <DashboardTabs />
 
       {state === 'error' && (
         <div style={errorBox}>Failed to load group: {msg}</div>
