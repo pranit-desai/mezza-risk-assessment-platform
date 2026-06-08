@@ -266,6 +266,8 @@ _(none at present)_
 
 2. **Text contrast on `/connect` page.** `#8a817a` at 12px failed WCAG AA (3.82:1). Fix: introduced `--mz-text-subtle: #5c544b` and `--mz-text-body: #171412` tokens in `app/globals.css`; replaced hardcoded hex values in `ConnectClient.jsx` with `var(--mz-text-subtle)`.
 
+3. **Sign-out button verified.** `SignOutButton.jsx` calls `supabase.auth.signOut()` then `router.push('/login')` + `router.refresh()` to flush the session cache. Reachable from all authenticated pages via `Sidebar.js:136`. No code change required.
+
 ### Known gaps (not bugs, but missing functionality)
 
 - **No case-creation UI.** Cases are currently inserted directly into Supabase via SQL. The `/cases/new` route does not exist yet. When this is built, it must respect the `region` column and the validation rules implied by §6.
