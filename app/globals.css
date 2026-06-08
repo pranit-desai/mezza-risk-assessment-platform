@@ -32,6 +32,9 @@
   --mz-text-on-page:   #f5f0e8;     /* same on warm graphite page */
   --mz-muted:          #8b8276;     /* secondary text */
   --mz-muted-on-page:  #8b8276;
+  /* light-surface text tokens (connect page, borrower-facing) */
+  --mz-text-body:      #171412;     /* ≥14:1 on #fff and #f7f4ef */
+  --mz-text-subtle:    #5c544b;     /* ≥5.3:1 on #fff, ≥4.8:1 on #f7f4ef — WCAG AA */
 
   /* ─── BORDERS ───────────────────────────────────── */
   --mz-border:         rgba(255, 255, 255, 0.06);  /* card borders, subtle */

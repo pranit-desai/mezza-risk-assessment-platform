@@ -69,7 +69,7 @@ const button = {
   cursor: 'pointer',
   fontWeight: 900,
 };
-const muted = { color: '#6f665c' };
+const muted = { color: 'var(--mz-text-subtle)' };
 
 export default function ConnectClient({ token }) {
   const [status, setStatus] = useState('idle');
@@ -166,7 +166,7 @@ export default function ConnectClient({ token }) {
           </div>
 
           <aside style={panel}>
-            <div style={{ fontSize: 12, color: '#8a817a', textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 900 }}>
+            <div style={{ fontSize: 12, color: 'var(--mz-text-subtle)', textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 900 }}>
               Connection request
             </div>
             <h2 style={{ margin: '8px 0 4px', fontSize: 24 }}>
