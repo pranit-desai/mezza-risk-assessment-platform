@@ -214,11 +214,15 @@ These rules govern how Claude Code, Cursor, and any other AI tool should operate
 
 This section is intentionally mutable. Update it as issues are resolved or new ones surface.
 
-### Open bugs (as of go-live)
+### Open bugs
 
-1. **`/api/fc/session` fails in live mode on the connect page.** The Stripe widget does not render. Likely causes to investigate first: missing or wrong live-mode publishable key on the client; server-side environment variable not promoted to Production in Vercel; account-level FC capability not enabled for the live mode account; webhook signature mismatch. Diagnose via Vercel function logs + Stripe Dashboard event log before editing code.
+_(none at present)_
 
-2. **Text contrast on `/connect` page.** Body copy fails WCAG AA against the current background. Audit the Tailwind classes on the relevant components and propose token-level fixes — do not patch with arbitrary hex colours.
+### Recently resolved
+
+1. **`/api/fc/session` failing in live mode.** Root cause: `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` were not set in Vercel Production environment variables. Fix: add both keys in Vercel dashboard and redeploy; defensive guard added to `lib/stripe.js` to surface a clear error if the key is ever missing again.
+
+2. **Text contrast on `/connect` page.** `#8a817a` at 12px failed WCAG AA (3.82:1). Fix: introduced `--mz-text-subtle: #5c544b` and `--mz-text-body: #171412` tokens in `app/globals.css`; replaced hardcoded hex values in `ConnectClient.jsx` with `var(--mz-text-subtle)`.
 
 ### Known gaps (not bugs, but missing functionality)
 
