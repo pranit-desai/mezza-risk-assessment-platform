@@ -106,20 +106,23 @@ export default function GroupDashboardPage() {
     })();
   }, []);
 
-  useEffect(() => {
+  async function refetchEntity() {
     if (!groupKey) return;
-    (async () => {
-      try {
-        const res = await fetch(`/api/groups/by-key/${encodeURIComponent(groupKey)}`, { cache: 'no-store' });
-        if (res.status === 404) { setEntityState('not-registered'); return; }
-        if (!res.ok) { setEntityState('not-registered'); return; }
-        const data = await res.json();
-        setEntity(data);
-        setEntityState('found');
-      } catch {
-        setEntityState('not-registered');
-      }
-    })();
+    try {
+      const res = await fetch(`/api/groups/by-key/${encodeURIComponent(groupKey)}`, { cache: 'no-store' });
+      if (res.status === 404) { setEntityState('not-registered'); return; }
+      if (!res.ok) { setEntityState('not-registered'); return; }
+      const data = await res.json();
+      setEntity(data);
+      setEntityState('found');
+    } catch {
+      setEntityState('not-registered');
+    }
+  }
+
+  useEffect(() => {
+    refetchEntity();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupKey]);
 
   const groupCasesAll = useMemo(() => {
@@ -245,7 +248,7 @@ export default function GroupDashboardPage() {
     <div style={{ padding: '28px 24px', color: 'var(--mz-text-on-page)' }}>
       <Link href="/cases" style={backLink}>Back to Cases</Link>
 
-      {entityState === 'found' && entity && <EntityCard entity={entity} />}
+      {entityState === 'found' && entity && <EntityCard entity={entity} onVenueAdded={refetchEntity} />}
       {entityState === 'not-registered' && (
         <RegisterBanner groupKey={groupKey} groupName={groupName} />
       )}
@@ -460,21 +463,78 @@ function MiniStat({ label, value }) {
   );
 }
 
-function EntityCard({ entity }) {
+function EntityCard({ entity, onVenueAdded }) {
   const venues = entity.venues || [];
+  const [showForm, setShowForm] = useState(false);
+  const [venueForm, setVenueForm] = useState({ venue_name: '', location: '', concept: '', lettable_sqm: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [venueError, setVenueError] = useState('');
+
+  async function handleAddVenue(e) {
+    e.preventDefault();
+    setVenueError('');
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/venues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group_id: entity.id,
+          venue_name: venueForm.venue_name,
+          location: venueForm.location || undefined,
+          concept: venueForm.concept || undefined,
+          lettable_sqm: venueForm.lettable_sqm !== '' ? venueForm.lettable_sqm : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setVenueError(data.error || 'Failed to add venue'); return; }
+      setShowForm(false);
+      setVenueForm({ venue_name: '', location: '', concept: '', lettable_sqm: '' });
+      onVenueAdded();
+    } catch {
+      setVenueError('Network error — please try again');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const venueInputStyle = {
+    width: '100%',
+    padding: '6px 10px',
+    borderRadius: 'var(--mz-radius-sm)',
+    border: '1px solid var(--mz-border-input)',
+    background: 'var(--mz-card-nested)',
+    color: 'var(--mz-text)',
+    fontFamily: 'var(--mz-font-sans)',
+    fontSize: 'var(--mz-fs-sm)',
+    boxSizing: 'border-box',
+  };
+
   return (
     <div className="mz-card" style={{ marginBottom: 20 }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
-        <RegionBadge region={entity.region} />
-        <span style={{ fontSize: 'var(--mz-fs-xs)', color: 'var(--mz-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          {entity.status}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+        <div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+            <RegionBadge region={entity.region} />
+            <span style={{ fontSize: 'var(--mz-fs-xs)', color: 'var(--mz-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {entity.status}
+            </span>
+          </div>
+          <h2 style={{ margin: '0 0 4px', fontSize: 'var(--mz-fs-h2)', fontWeight: 800 }}>{entity.group_name}</h2>
+          <p style={{ margin: 0, fontSize: 'var(--mz-fs-sm)', color: 'var(--mz-muted)', fontFamily: 'var(--mz-font-mono)' }}>
+            {entity.group_key}{entity.commercial_poc ? ` · PoC: ${entity.commercial_poc}` : ''}
+          </p>
+        </div>
+        <button
+          onClick={() => { setShowForm((v) => !v); setVenueError(''); }}
+          className="mz-clickable"
+          style={{ padding: '6px 12px', whiteSpace: 'nowrap', flexShrink: 0 }}
+        >
+          {showForm ? 'Cancel' : '+ Add Venue'}
+        </button>
       </div>
-      <h2 style={{ margin: '0 0 4px', fontSize: 'var(--mz-fs-h2)', fontWeight: 800 }}>{entity.group_name}</h2>
-      <p style={{ margin: '0 0 14px', fontSize: 'var(--mz-fs-sm)', color: 'var(--mz-muted)', fontFamily: 'var(--mz-font-mono)' }}>
-        {entity.group_key}{entity.commercial_poc ? ` · PoC: ${entity.commercial_poc}` : ''}
-      </p>
-      {venues.length === 0 && (
+
+      {venues.length === 0 && !showForm && (
         <p style={{ margin: 0, fontSize: 'var(--mz-fs-sm)', color: 'var(--mz-muted)' }}>No venues registered yet.</p>
       )}
       {venues.length > 0 && (
@@ -499,6 +559,84 @@ function EntityCard({ entity }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {showForm && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--mz-border-soft)' }}>
+          <div className="mz-eyebrow" style={{ marginBottom: 12 }}>Add a venue</div>
+          <p style={{ margin: '0 0 14px', fontSize: 'var(--mz-fs-xs)', color: 'var(--mz-muted)' }}>
+            Region: <strong style={{ color: 'var(--mz-text)' }}>{entity.region}</strong> — inherited from this group, not editable.
+          </p>
+          <form onSubmit={handleAddVenue}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 'var(--mz-fs-xs)', fontWeight: 700, color: 'var(--mz-muted)' }}>
+                  Venue name <span style={{ color: 'var(--mz-accent)' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  style={venueInputStyle}
+                  value={venueForm.venue_name}
+                  onChange={(e) => setVenueForm((f) => ({ ...f, venue_name: e.target.value }))}
+                  autoFocus
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 'var(--mz-fs-xs)', fontWeight: 700, color: 'var(--mz-muted)' }}>Location</label>
+                <input
+                  type="text"
+                  style={venueInputStyle}
+                  value={venueForm.location}
+                  onChange={(e) => setVenueForm((f) => ({ ...f, location: e.target.value }))}
+                  placeholder="e.g. JBR, Dubai"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 'var(--mz-fs-xs)', fontWeight: 700, color: 'var(--mz-muted)' }}>Concept</label>
+                <input
+                  type="text"
+                  style={venueInputStyle}
+                  value={venueForm.concept}
+                  onChange={(e) => setVenueForm((f) => ({ ...f, concept: e.target.value }))}
+                  placeholder="e.g. Sushi, Mediterranean"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 'var(--mz-fs-xs)', fontWeight: 700, color: 'var(--mz-muted)' }}>Floor area (sqm)</label>
+                <input
+                  type="number"
+                  style={venueInputStyle}
+                  value={venueForm.lettable_sqm}
+                  onChange={(e) => setVenueForm((f) => ({ ...f, lettable_sqm: e.target.value }))}
+                  min="0"
+                  step="1"
+                />
+              </div>
+            </div>
+            {venueError && (
+              <p style={{ margin: '0 0 10px', color: 'var(--mz-red-text)', fontSize: 'var(--mz-fs-xs)' }}>{venueError}</p>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="mz-clickable active"
+                style={{ padding: '7px 14px', opacity: submitting ? 0.65 : 1 }}
+              >
+                {submitting ? 'Adding…' : 'Add venue'}
+              </button>
+              <button
+                type="button"
+                className="mz-clickable"
+                style={{ padding: '7px 14px' }}
+                onClick={() => { setShowForm(false); setVenueError(''); }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
