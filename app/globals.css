@@ -73,6 +73,51 @@
   --mz-red-border:     rgba(212, 48, 48, 0.4);
   --mz-red-text:       #d43030;
 
+  /* ─── STATUS COLOUR TOKENS ──────────────────────── */
+  /* Each status has three token suffixes: -bg, -border, -text.
+     STATUS_STYLES in casePresentation.js references these only.
+     additional_documents_requested → docs-requested (burnt orange,
+     action-needed; not a terminal state). */
+  --mz-status-new-bg:                 rgba(139, 130, 118, 0.08);
+  --mz-status-new-border:             rgba(139, 130, 118, 0.25);
+  --mz-status-new-text:               #8b8276;
+
+  --mz-status-uploading-bg:           rgba(153, 128, 232, 0.12);
+  --mz-status-uploading-border:       rgba(153, 128, 232, 0.35);
+  --mz-status-uploading-text:         #9980e8;
+
+  --mz-status-extracting-bg:          rgba(107, 152, 208, 0.12);
+  --mz-status-extracting-border:      rgba(107, 152, 208, 0.35);
+  --mz-status-extracting-text:        #6b98d0;
+
+  --mz-status-data-bank-ready-bg:     rgba(82, 200, 176, 0.12);
+  --mz-status-data-bank-ready-border: rgba(82, 200, 176, 0.38);
+  --mz-status-data-bank-ready-text:   #52c8b0;
+
+  --mz-status-under-review-bg:        rgba(200, 160, 0, 0.12);
+  --mz-status-under-review-border:    rgba(200, 160, 0, 0.38);
+  --mz-status-under-review-text:      #c8a000;
+
+  --mz-status-docs-requested-bg:      rgba(200, 114, 0, 0.12);
+  --mz-status-docs-requested-border:  rgba(200, 114, 0, 0.38);
+  --mz-status-docs-requested-text:    #c87200;
+
+  --mz-status-approved-bg:            rgba(0, 200, 110, 0.12);
+  --mz-status-approved-border:        rgba(0, 200, 110, 0.38);
+  --mz-status-approved-text:          #00c86e;
+
+  --mz-status-declined-bg:            rgba(212, 90, 0, 0.14);
+  --mz-status-declined-border:        rgba(212, 90, 0, 0.40);
+  --mz-status-declined-text:          #d45a00;
+
+  --mz-status-rejected-bg:            rgba(212, 48, 48, 0.14);
+  --mz-status-rejected-border:        rgba(212, 48, 48, 0.40);
+  --mz-status-rejected-text:          #d43030;
+
+  --mz-status-expired-bg:             rgba(90, 82, 74, 0.10);
+  --mz-status-expired-border:         rgba(90, 82, 74, 0.28);
+  --mz-status-expired-text:           #6b6258;
+
   /* ─── ANALYTICS CHART PALETTE ───────────────────── */
   --mz-chart-1:        #ff6b35;
   --mz-chart-2:        #00c86e;

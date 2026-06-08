@@ -12,16 +12,16 @@ export const STATUS_LABELS = {
 };
 
 export const STATUS_STYLES = {
-  new: { bg: 'rgba(255,255,255,0.05)', border: 'var(--mz-border-input)', color: 'var(--mz-text)' },
-  uploading: { bg: 'rgba(139, 92, 246, 0.14)', border: 'rgba(139, 92, 246, 0.4)', color: 'var(--mz-ai-accent)' },
-  extracting: { bg: 'rgba(59, 130, 246, 0.14)', border: 'rgba(59, 130, 246, 0.4)', color: 'var(--mz-chart-9)' },
-  data_bank_ready: { bg: 'rgba(82, 200, 176, 0.14)', border: 'rgba(82, 200, 176, 0.42)', color: 'var(--mz-tier-above-avg)' },
-  under_review: { bg: 'rgba(212, 168, 0, 0.14)', border: 'rgba(212, 168, 0, 0.45)', color: 'var(--mz-amber-text)' },
-  additional_documents_requested: { bg: 'rgba(236, 72, 153, 0.14)', border: 'rgba(236, 72, 153, 0.45)', color: 'var(--mz-chart-10)' },
-  approved: { bg: 'var(--mz-green-bg)', border: 'var(--mz-green-border)', color: 'var(--mz-green-text)' },
-  declined: { bg: 'rgba(212, 90, 0, 0.16)', border: 'rgba(212, 90, 0, 0.45)', color: 'var(--mz-tier-poor)' },
-  rejected: { bg: 'rgba(212, 48, 48, 0.14)', border: 'rgba(212, 48, 48, 0.45)', color: 'var(--mz-red-text)' },
-  expired: { bg: 'rgba(139, 130, 118, 0.14)', border: 'rgba(139, 130, 118, 0.42)', color: 'var(--mz-muted)' },
+  new:                            { bg: 'var(--mz-status-new-bg)',                border: 'var(--mz-status-new-border)',                color: 'var(--mz-status-new-text)' },
+  uploading:                      { bg: 'var(--mz-status-uploading-bg)',           border: 'var(--mz-status-uploading-border)',           color: 'var(--mz-status-uploading-text)' },
+  extracting:                     { bg: 'var(--mz-status-extracting-bg)',          border: 'var(--mz-status-extracting-border)',          color: 'var(--mz-status-extracting-text)' },
+  data_bank_ready:                { bg: 'var(--mz-status-data-bank-ready-bg)',     border: 'var(--mz-status-data-bank-ready-border)',     color: 'var(--mz-status-data-bank-ready-text)' },
+  under_review:                   { bg: 'var(--mz-status-under-review-bg)',        border: 'var(--mz-status-under-review-border)',        color: 'var(--mz-status-under-review-text)' },
+  additional_documents_requested: { bg: 'var(--mz-status-docs-requested-bg)',     border: 'var(--mz-status-docs-requested-border)',     color: 'var(--mz-status-docs-requested-text)' },
+  approved:                       { bg: 'var(--mz-status-approved-bg)',            border: 'var(--mz-status-approved-border)',            color: 'var(--mz-status-approved-text)' },
+  declined:                       { bg: 'var(--mz-status-declined-bg)',            border: 'var(--mz-status-declined-border)',            color: 'var(--mz-status-declined-text)' },
+  rejected:                       { bg: 'var(--mz-status-rejected-bg)',            border: 'var(--mz-status-rejected-border)',            color: 'var(--mz-status-rejected-text)' },
+  expired:                        { bg: 'var(--mz-status-expired-bg)',             border: 'var(--mz-status-expired-border)',             color: 'var(--mz-status-expired-text)' },
 };
 
 export function normalizeStatus(status) {

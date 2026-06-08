@@ -231,6 +231,7 @@ These apply to anything that may be exported, emailed, or shown to a customer / 
 - **Decimals:** revenue and ceiling figures are whole numbers. Scores carry two decimals (e.g. `76.36`).
 - **Email templates:** Mezza standard HTML template. Inline CSS only — no external stylesheets, no `<style>` blocks in `<head>` that some mail clients drop.
 - **Tone in customer-facing copy:** clear, professional, no hedge words ("kindly", "please be advised"), no jargon the borrower would not recognise.
+- **Status badge colours:** Defined as `--mz-status-{key}-{bg|border|text}` tokens in `app/globals.css`. `STATUS_STYLES` in `app/_lib/casePresentation.js` references these exclusively — never add raw `rgba()` or hex values to that object. The `additional_documents_requested` status maps to `--mz-status-docs-requested-*` (burnt orange `#c87200`), placing it in the action-needed orange family distinct from both `under_review` (amber) and the terminal-decline red family. Colour decisions live in `globals.css`; `casePresentation.js` only references tokens.
 
 ---
 
