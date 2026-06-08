@@ -118,6 +118,16 @@
   --mz-status-expired-border:         rgba(90, 82, 74, 0.28);
   --mz-status-expired-text:           #6b6258;
 
+  /* ─── REGION BADGE TOKENS ───────────────────────── */
+  /* Use RegionBadge component — never hardcode these in pages. */
+  --mz-region-uae-bg:     rgba(184, 154, 96, 0.10);
+  --mz-region-uae-border: rgba(184, 154, 96, 0.28);
+  --mz-region-uae-text:   #b89a60;
+
+  --mz-region-usa-bg:     rgba(110, 140, 166, 0.10);
+  --mz-region-usa-border: rgba(110, 140, 166, 0.28);
+  --mz-region-usa-text:   #6e8ca6;
+
   /* ─── ANALYTICS CHART PALETTE ───────────────────── */
   --mz-chart-1:        #ff6b35;
   --mz-chart-2:        #00c86e;

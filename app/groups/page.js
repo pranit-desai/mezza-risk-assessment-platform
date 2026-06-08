@@ -1,77 +1,21 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import CaseSearchBox from '../_components/CaseSearchBox';
-import DashboardControls from '../_components/DashboardControls';
-import DashboardTabs from '../_components/DashboardTabs';
-import StatusBadge from '../_components/StatusBadge';
-import { filterCasesByQuery } from '../_lib/caseSearch';
-import {
-  caseGroup,
-  caseGroupSlug,
-  caseRegion,
-  caseVenue,
-  currencyForRegion,
-  lendingAmountColor,
-  recommendedCeiling,
-  scoreColor,
-} from '../_lib/casePresentation';
-
-const API = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-function money(n, currency) {
-  const value = Number(n || 0);
-  if (!value) return '-';
-  if (value >= 1e6) return `${currency} ${(value / 1e6).toFixed(2)}M`;
-  if (value >= 1e3) return `${currency} ${(value / 1e3).toFixed(1)}K`;
-  return `${currency} ${value.toLocaleString('en-AE')}`;
-}
-
-function avgScore(cases) {
-  const values = cases.map((c) => Number(c.score)).filter((n) => !Number.isNaN(n));
-  if (!values.length) return '-';
-  return (values.reduce((sum, n) => sum + n, 0) / values.length).toFixed(1);
-}
-
-function groupStatus(cases) {
-  const statuses = new Set(cases.map((c) => String(c.status || '').toLowerCase()));
-  if (statuses.has('additional_documents_requested')) return 'additional_documents_requested';
-  if (statuses.has('declined') || statuses.has('rejected')) return 'declined';
-  if (statuses.has('under_review')) return 'under_review';
-  if (statuses.has('approved') && cases.every((c) => String(c.status || '').toLowerCase() === 'approved')) return 'approved';
-  return cases.find((c) => c.status)?.status || 'new';
-}
-
-function groupRows(cases) {
-  const map = new Map();
-  for (const c of cases) {
-    const region = caseRegion(c);
-    const group = caseGroup(c);
-    const key = `${region}:${group}`;
-    if (!map.has(key)) map.set(key, { key, region, group, cases: [] });
-    map.get(key).cases.push(c);
-  }
-  return Array.from(map.values()).sort((a, b) => {
-    if (a.region !== b.region) return a.region.localeCompare(b.region);
-    return a.group.localeCompare(b.group);
-  });
-}
+import RegionBadge from '../_components/RegionBadge';
 
 export default function GroupsPage() {
-  const [cases, setCases] = useState([]);
-  const [query, setQuery] = useState('');
-  const [regionFilter, setRegionFilter] = useState('All');
+  const [groups, setGroups] = useState([]);
   const [state, setState] = useState('loading');
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API}/cases`, { cache: 'no-store' });
+        const res = await fetch('/api/groups', { cache: 'no-store' });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
-        setCases(Array.isArray(data) ? data : data.cases ?? []);
+        setGroups(Array.isArray(data) ? data : []);
         setState('ok');
       } catch (e) {
         setMsg(e.message || 'Failed to load groups');
@@ -80,87 +24,76 @@ export default function GroupsPage() {
     })();
   }, []);
 
-  const regionCases = useMemo(() => {
-    if (regionFilter === 'All') return cases;
-    return cases.filter((c) => caseRegion(c) === regionFilter);
-  }, [cases, regionFilter]);
-  const visibleCases = useMemo(() => filterCasesByQuery(regionCases, query), [regionCases, query]);
-  const rows = useMemo(() => groupRows(visibleCases), [visibleCases]);
-
   return (
     <div style={{ padding: '32px 40px', color: 'var(--mz-text-on-page)' }}>
-      <h1 style={{ fontSize: 34, fontWeight: 900, margin: 0 }}>Groups</h1>
-      <p style={{ color: 'var(--mz-accent)', marginTop: 6 }}>
-        Group-level lending dashboards for signed operators and their venues.
-      </p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+        <div>
+          <h1 style={{ fontSize: 34, fontWeight: 900, margin: 0 }}>Groups</h1>
+          <p style={{ color: 'var(--mz-accent)', marginTop: 6, marginBottom: 0 }}>
+            Registered borrower groups and their venues.
+          </p>
+        </div>
+        <Link href="/groups/new" className="mz-clickable" style={{ padding: '8px 16px', textDecoration: 'none' }}>
+          + New Group
+        </Link>
+      </div>
 
-      <DashboardTabs />
-      <DashboardControls region={regionFilter} onRegionChange={setRegionFilter} />
-
-      <CaseSearchBox
-        value={query}
-        onChange={setQuery}
-        resultCount={visibleCases.length}
-        totalCount={regionCases.length}
-      />
-
-      {state === 'loading' && <div style={empty}>Loading groups...</div>}
+      {state === 'loading' && (
+        <div style={emptyBox}>Loading groups…</div>
+      )}
 
       {state === 'error' && (
-        <div style={{ ...empty, background: 'var(--mz-red-bg)', border: '1px solid var(--mz-red-border)', color: 'var(--mz-red-text)' }}>
+        <div style={{ ...emptyBox, background: 'var(--mz-red-bg)', border: '1px solid var(--mz-red-border)', color: 'var(--mz-red-text)' }}>
           Failed to load groups: {msg}
         </div>
       )}
 
-      {state === 'ok' && rows.length === 0 && (
-        <div style={empty}>No groups match your search.</div>
+      {state === 'ok' && groups.length === 0 && (
+        <div style={emptyBox}>
+          No registered groups yet.{' '}
+          <Link href="/groups/new" style={{ color: 'var(--mz-accent)' }}>Create the first one →</Link>
+        </div>
       )}
 
-      {state === 'ok' && rows.length > 0 && (
+      {state === 'ok' && groups.length > 0 && (
         <section className="mz-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--mz-border-soft)' }}>
-            <span className="mz-eyebrow">Signed Groups</span>
-          </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
               <thead>
                 <tr>
-                  <th style={th}>Group</th>
+                  <th style={th}>Group Name</th>
                   <th style={th}>Region</th>
-                  <th style={th}>Venues</th>
-                  <th style={th}>Top Venue</th>
-                  <th style={th}>Avg Score</th>
-                  <th style={th}>Recommended Lending Amount</th>
-                  <th style={th}>Status</th>
-                  <th style={th}>Action</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Venues</th>
+                  <th style={th} />
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => {
-                  const currency = currencyForRegion(row.region);
-                  const recommended = row.cases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
-                  const top = [...row.cases].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0))[0];
-                  return (
-                    <tr key={row.key}>
-                      <td style={{ ...td, fontWeight: 900 }}>{row.group}</td>
-                      <td style={td}>{row.region}</td>
-                      <td style={td}>{row.cases.length}</td>
-                      <td style={td}>{top ? caseVenue(top) : '-'}</td>
-                      <td style={{ ...td, color: scoreColor(avgScore(row.cases)), fontWeight: 900 }} className="mz-mono">{avgScore(row.cases)}</td>
-                      <td style={{ ...td, color: lendingAmountColor(recommended), fontWeight: 900 }} className="mz-mono">{money(recommended, currency)}</td>
-                      <td style={td}><StatusBadge status={groupStatus(row.cases)} /></td>
-                      <td style={td}>
-                        <Link
-                          href={`/groups/${caseGroupSlug(row.cases[0])}?region=${row.region}`}
-                          className="mz-clickable"
-                          style={{ padding: '6px 10px', display: 'inline-flex' }}
-                        >
-                          Open group
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {groups.map((g) => (
+                  <tr key={g.id}>
+                    <td style={{ ...td, fontWeight: 900 }}>
+                      <Link
+                        href={`/groups/${g.group_key}`}
+                        style={{ color: 'var(--mz-text)', textDecoration: 'none' }}
+                      >
+                        {g.group_name}
+                      </Link>
+                    </td>
+                    <td style={td}>
+                      <RegionBadge region={g.region} />
+                    </td>
+                    <td style={{ ...td, textAlign: 'right', fontFamily: 'var(--mz-font-mono)' }}>
+                      {g.venue_count}
+                    </td>
+                    <td style={{ ...td, textAlign: 'right' }}>
+                      <Link
+                        href={`/groups/${g.group_key}`}
+                        style={{ color: 'var(--mz-accent)', textDecoration: 'none' }}
+                      >
+                        Open →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -170,7 +103,7 @@ export default function GroupsPage() {
   );
 }
 
-const empty = {
+const emptyBox = {
   padding: 18,
   borderRadius: 8,
   background: 'var(--mz-card)',

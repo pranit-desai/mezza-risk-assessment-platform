@@ -6,7 +6,8 @@ import { useState } from "react";
 import SignOutButton from "./SignOutButton";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: "D", matches: ["/", "/groups", "/cases", "/analytics"] },
+  { href: "/", label: "Dashboard", icon: "D", matches: ["/", "/cases", "/analytics"] },
+  { href: "/groups", label: "Groups", icon: "G" },
   { href: "/new-case", label: "New Case", icon: "N" },
   { href: "/banking", label: "Banking", icon: "B" },
 ];

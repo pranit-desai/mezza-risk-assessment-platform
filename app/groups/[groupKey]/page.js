@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
+import RegionBadge from '../../_components/RegionBadge';
 import { useEffect, useMemo, useState } from 'react';
 import DashboardTabs from '../../_components/DashboardTabs';
 import StatusBadge from '../../_components/StatusBadge';
@@ -87,6 +88,9 @@ export default function GroupDashboardPage() {
   const [settingsLoadByKey, setSettingsLoadByKey] = useState({});
   const [saveStateByKey, setSaveStateByKey] = useState({});
 
+  const [entity, setEntity] = useState(null);
+  const [entityState, setEntityState] = useState('loading');
+
   useEffect(() => {
     (async () => {
       try {
@@ -101,6 +105,22 @@ export default function GroupDashboardPage() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!groupKey) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/groups/by-key/${encodeURIComponent(groupKey)}`, { cache: 'no-store' });
+        if (res.status === 404) { setEntityState('not-registered'); return; }
+        if (!res.ok) { setEntityState('not-registered'); return; }
+        const data = await res.json();
+        setEntity(data);
+        setEntityState('found');
+      } catch {
+        setEntityState('not-registered');
+      }
+    })();
+  }, [groupKey]);
 
   const groupCasesAll = useMemo(() => {
     return cases.filter((c) => caseGroupSlug(c) === groupKey);
@@ -224,6 +244,11 @@ export default function GroupDashboardPage() {
   return (
     <div style={{ padding: '28px 24px', color: 'var(--mz-text-on-page)' }}>
       <Link href="/cases" style={backLink}>Back to Cases</Link>
+
+      {entityState === 'found' && entity && <EntityCard entity={entity} />}
+      {entityState === 'not-registered' && (
+        <RegisterBanner groupKey={groupKey} groupName={groupName} />
+      )}
 
       <div style={{ marginTop: 18, marginBottom: 18 }}>
         <div className="mz-eyebrow">Group Dashboard</div>
@@ -431,6 +456,75 @@ function MiniStat({ label, value }) {
     <div style={{ background: 'var(--mz-card-nested)', border: '1px solid var(--mz-border-soft)', borderRadius: 8, padding: 12 }}>
       <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' }}>{label}</div>
       <div className="mz-mono" style={{ fontWeight: 900, fontSize: 20, marginTop: 4 }}>{value}</div>
+    </div>
+  );
+}
+
+function EntityCard({ entity }) {
+  const venues = entity.venues || [];
+  return (
+    <div className="mz-card" style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+        <RegionBadge region={entity.region} />
+        <span style={{ fontSize: 'var(--mz-fs-xs)', color: 'var(--mz-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {entity.status}
+        </span>
+      </div>
+      <h2 style={{ margin: '0 0 4px', fontSize: 'var(--mz-fs-h2)', fontWeight: 800 }}>{entity.group_name}</h2>
+      <p style={{ margin: '0 0 14px', fontSize: 'var(--mz-fs-sm)', color: 'var(--mz-muted)', fontFamily: 'var(--mz-font-mono)' }}>
+        {entity.group_key}{entity.commercial_poc ? ` · PoC: ${entity.commercial_poc}` : ''}
+      </p>
+      {venues.length === 0 && (
+        <p style={{ margin: 0, fontSize: 'var(--mz-fs-sm)', color: 'var(--mz-muted)' }}>No venues registered yet.</p>
+      )}
+      {venues.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--mz-border-soft)' }}>
+                {['Venue', 'Location', 'Concept', 'Sqm', 'Status'].map((h) => (
+                  <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 'var(--mz-fs-xxs)', fontWeight: 700, color: 'var(--mz-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {venues.map((v) => (
+                <tr key={v.id} style={{ borderBottom: '1px solid var(--mz-border-subtle)' }}>
+                  <td style={{ padding: '9px 12px', fontWeight: 700, fontSize: 'var(--mz-fs-sm)' }}>{v.venue_name}</td>
+                  <td style={{ padding: '9px 12px', color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-sm)' }}>{v.location || '—'}</td>
+                  <td style={{ padding: '9px 12px', color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-sm)' }}>{v.concept || '—'}</td>
+                  <td style={{ padding: '9px 12px', fontFamily: 'var(--mz-font-mono)', fontSize: 'var(--mz-fs-sm)' }}>{v.lettable_sqm ?? '—'}</td>
+                  <td style={{ padding: '9px 12px', fontSize: 'var(--mz-fs-xs)', color: 'var(--mz-muted)', textTransform: 'uppercase' }}>{v.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RegisterBanner({ groupKey, groupName }) {
+  const p = new URLSearchParams();
+  if (groupKey) p.set('group_key', groupKey);
+  if (groupName && groupName !== 'Ungrouped') p.set('group_name', groupName);
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      padding: '10px 16px',
+      marginBottom: 16,
+      borderRadius: 'var(--mz-radius-md)',
+      background: 'var(--mz-accent-06)',
+      border: '1px solid var(--mz-border-on-page)',
+      fontSize: 'var(--mz-fs-sm)',
+    }}>
+      <span style={{ color: 'var(--mz-muted)' }}>This group is not registered as an entity yet.</span>
+      <Link href={`/groups/new?${p.toString()}`} style={{ color: 'var(--mz-accent)', fontWeight: 700, whiteSpace: 'nowrap', textDecoration: 'none' }}>
+        Register it →
+      </Link>
     </div>
   );
 }
