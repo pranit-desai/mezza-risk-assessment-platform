@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { logSupabaseError } from '@/lib/supabaseDiagnostics';
+import { resolvePublicUser } from '@/lib/publicUser';
 
 async function requireUser() {
   const supabase = await createSupabaseServer();
@@ -11,6 +13,17 @@ async function requireUser() {
 export async function POST(req) {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { publicUser, error: publicUserError } = await resolvePublicUser(user);
+  if (publicUserError) {
+    return NextResponse.json({ error: 'Failed to resolve user profile' }, { status: 500 });
+  }
+  if (!publicUser) {
+    return NextResponse.json(
+      { error: 'Your user profile is not configured. Ask an admin to add your account.' },
+      { status: 403 }
+    );
+  }
 
   let body;
   try {
@@ -48,7 +61,7 @@ export async function POST(req) {
       concept: concept?.trim() || null,
       lettable_sqm: lettable_sqm != null && lettable_sqm !== '' ? Number(lettable_sqm) : null,
       region: group.region,
-      created_by: user.id,
+      created_by: publicUser.id,
     })
     .select()
     .single();
@@ -60,6 +73,12 @@ export async function POST(req) {
         { status: 400 }
       );
     }
+    logSupabaseError('Venue create failed', error, {
+      authUserId: user.id,
+      publicUserId: publicUser.id,
+      groupId: group.id,
+      region: group.region,
+    });
     return NextResponse.json({ error: 'Failed to create venue' }, { status: 500 });
   }
 

@@ -119,6 +119,7 @@ export default function DataBankPage() {
   }, [caseId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (caseId) load();
   }, [caseId, load]);
 

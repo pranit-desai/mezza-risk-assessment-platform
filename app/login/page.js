@@ -1,15 +1,13 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { createSupabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
-  const [denied, setDenied] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('denied') === '1') setDenied(true);
-  }, []);
+  const [denied] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('denied') === '1';
+  });
 
   async function signIn() {
     setLoading(true);

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { logSupabaseError } from '@/lib/supabaseDiagnostics';
+import { resolvePublicUser } from '@/lib/publicUser';
 
 async function requireUser() {
   const supabase = await createSupabaseServer();
@@ -14,10 +16,13 @@ export async function GET() {
 
   const { data, error } = await supabaseAdmin
     .from('groups')
-    .select('*, venues(id)')
+    .select('*, venues!venues_group_id_fkey(id)')
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: 'Failed to fetch groups' }, { status: 500 });
+  if (error) {
+    logSupabaseError('Groups lookup failed', error);
+    return NextResponse.json({ error: 'Failed to fetch groups' }, { status: 500 });
+  }
 
   const groups = data.map(({ venues, ...g }) => ({
     ...g,
@@ -30,6 +35,17 @@ export async function GET() {
 export async function POST(req) {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { publicUser, error: publicUserError } = await resolvePublicUser(user);
+  if (publicUserError) {
+    return NextResponse.json({ error: 'Failed to resolve user profile' }, { status: 500 });
+  }
+  if (!publicUser) {
+    return NextResponse.json(
+      { error: 'Your user profile is not configured. Ask an admin to add your account.' },
+      { status: 403 }
+    );
+  }
 
   let body;
   try {
@@ -66,7 +82,7 @@ export async function POST(req) {
       group_key: group_key.trim(),
       region,
       commercial_poc: commercial_poc?.trim() || null,
-      created_by: user.id,
+      created_by: publicUser.id,
     })
     .select()
     .single();
@@ -78,6 +94,12 @@ export async function POST(req) {
         { status: 409 }
       );
     }
+    logSupabaseError('Group create failed', error, {
+      authUserId: user.id,
+      publicUserId: publicUser.id,
+      groupKey: group_key?.trim(),
+      region,
+    });
     return NextResponse.json({ error: 'Failed to create group' }, { status: 500 });
   }
 

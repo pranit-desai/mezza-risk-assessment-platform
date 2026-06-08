@@ -660,7 +660,7 @@ function RegisterBanner({ groupKey, groupName }) {
       fontSize: 'var(--mz-fs-sm)',
     }}>
       <span style={{ color: 'var(--mz-muted)' }}>This group is not registered as an entity yet.</span>
-      <Link href={`/groups/new?${p.toString()}`} style={{ color: 'var(--mz-accent)', fontWeight: 700, whiteSpace: 'nowrap', textDecoration: 'none' }}>
+      <Link href={`/new-case?${p.toString()}`} style={{ color: 'var(--mz-accent)', fontWeight: 700, whiteSpace: 'nowrap', textDecoration: 'none' }}>
         Register it →
       </Link>
     </div>

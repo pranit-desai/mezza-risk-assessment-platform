@@ -33,13 +33,13 @@ export default function GroupsPage() {
             Registered borrower groups and their venues.
           </p>
         </div>
-        <Link href="/groups/new" className="mz-clickable" style={{ padding: '8px 16px', textDecoration: 'none' }}>
-          + New Group
+        <Link href="/new-case" className="mz-clickable" style={{ padding: '8px 16px', textDecoration: 'none' }}>
+          + New Case
         </Link>
       </div>
 
       {state === 'loading' && (
-        <div style={emptyBox}>Loading groups…</div>
+        <div style={emptyBox}>Loading groups...</div>
       )}
 
       {state === 'error' && (
@@ -51,7 +51,7 @@ export default function GroupsPage() {
       {state === 'ok' && groups.length === 0 && (
         <div style={emptyBox}>
           No registered groups yet.{' '}
-          <Link href="/groups/new" style={{ color: 'var(--mz-accent)' }}>Create the first one →</Link>
+          <Link href="/new-case" style={{ color: 'var(--mz-accent)' }}>Add the first case intake -&gt;</Link>
         </div>
       )}
 
@@ -89,7 +89,7 @@ export default function GroupsPage() {
                         href={`/groups/${g.group_key}`}
                         style={{ color: 'var(--mz-accent)', textDecoration: 'none' }}
                       >
-                        Open →
+                        Open -&gt;
                       </Link>
                     </td>
                   </tr>

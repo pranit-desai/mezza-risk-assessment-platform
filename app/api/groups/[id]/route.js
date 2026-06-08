@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { logSupabaseError } from '@/lib/supabaseDiagnostics';
 
 async function requireUser() {
   const supabase = await createSupabaseServer();
@@ -16,11 +17,14 @@ export async function GET(request, { params }) {
 
   const { data, error } = await supabaseAdmin
     .from('groups')
-    .select('*, venues(*)')
+    .select('*, venues!venues_group_id_fkey(*)')
     .eq('id', id)
     .single();
 
   if (error || !data) {
+    if (error?.code !== 'PGRST116') {
+      logSupabaseError('Group lookup by id failed', error, { groupId: id });
+    }
     return NextResponse.json({ error: 'Group not found' }, { status: 404 });
   }
 

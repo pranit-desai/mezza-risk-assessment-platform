@@ -105,7 +105,9 @@ export default function Home() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCases();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const extracted = selectedCase?.extracted_json || {};
