@@ -20,7 +20,6 @@ import {
   shortCaseRef,
   statusLabel,
   statusStyle,
-  trackerDates,
 } from "./_lib/casePresentation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -33,6 +32,7 @@ const STATUS_OPTIONS = [
   { value: "on_hold", label: "On Hold" },
   { value: "additional_documents_requested", label: "Additional Documents" },
 ];
+const STATUS_VALUES = new Set(STATUS_OPTIONS.map((option) => option.value));
 const CHANGED_BY = "Pranit";
 const AUDITED_FIELDS = new Set(["submission_date", "verdict_date"]);
 const LOCAL_CASE_FIELDS = new Set(["region", "submission_date", "verdict_date", "status"]);
@@ -142,15 +142,22 @@ function groupRows(cases, registeredGroups = []) {
   });
 }
 
-function latestDate(rows, getter) {
+function dateFromRows(rows, fieldName, direction = "asc") {
   const values = rows
-    .map((row) => getter(trackerDates(row)))
+    .map((row) => dateInputValue(row[fieldName]))
     .filter(Boolean)
-    .map((value) => new Date(value))
-    .filter((date) => !Number.isNaN(date.getTime()))
-    .sort((a, b) => b - a);
+    .sort();
 
-  return values[0] || null;
+  if (!values.length) return "";
+  return direction === "desc" ? values.at(-1) : values[0];
+}
+
+function earliestDateValue(rows, fieldName) {
+  return dateFromRows(rows, fieldName, "asc");
+}
+
+function latestDateValue(rows, fieldName) {
+  return dateFromRows(rows, fieldName, "desc");
 }
 
 function groupMetrics(rows) {
@@ -179,11 +186,13 @@ function aggregateStatus(rows) {
   return "";
 }
 
-function aggregateDateValue(rows, fieldName) {
-  if (!rows.length) return "";
-  const values = new Set(rows.map((row) => dateInputValue(row[fieldName])).filter(Boolean));
-  if (values.size === 1) return Array.from(values)[0];
-  return "";
+function validStatusValue(value) {
+  const status = normalizeStatus(value);
+  return STATUS_VALUES.has(status) ? status : "";
+}
+
+function groupCaseStatus(registeredGroup, rows) {
+  return validStatusValue(registeredGroup?.case_status) || aggregateStatus(rows) || "under_review";
 }
 
 function optionsWithCurrent(options, value, labelForValue = statusLabel) {
@@ -202,14 +211,6 @@ function apiFieldValue(value) {
 
 function groupFieldSaving(rows, savingFields, fieldName) {
   return rows.some((row) => savingFields[fieldKey(row.id, fieldName)]);
-}
-
-function latestFieldStamp(rows, auditStamps, fieldName) {
-  const stamps = rows
-    .map((row) => auditStamps[fieldKey(row.id, fieldName)] || row?._audit_stamps?.[fieldName])
-    .filter(Boolean)
-    .sort((a, b) => new Date(b.at) - new Date(a.at));
-  return stamps[0] || null;
 }
 
 function fieldStamp(row, auditStamps, fieldName) {
@@ -503,20 +504,6 @@ export default function Dashboard() {
     }
   }
 
-  async function updateGroupField(rows, fieldName, newValue, groupName) {
-    if (newValue === "" || newValue === undefined || rows.length === 0) return;
-    const confirmed = window.confirm(
-      `Update ${fieldName.replace(/_/g, " ")} for ${rows.length} venue case${rows.length === 1 ? "" : "s"} in ${groupName}?`
-    );
-    if (!confirmed) return false;
-
-    for (const row of rows) {
-      const success = await updateCaseField(row, fieldName, newValue);
-      if (!success) return false;
-    }
-    return true;
-  }
-
   async function updateRegisteredGroupRegion(registeredGroup, nextRegion) {
     if (!registeredGroup?.id || nextRegion === caseRegion(registeredGroup)) return true;
     setMutationError("");
@@ -542,6 +529,36 @@ export default function Dashboard() {
       return false;
     } finally {
       setFieldSaving(registeredGroup.id, "region", false);
+    }
+  }
+
+  async function updateRegisteredGroupStatus(registeredGroup, nextStatus) {
+    const status = validStatusValue(nextStatus);
+    if (!registeredGroup?.id || !status || status === validStatusValue(registeredGroup.case_status)) return true;
+
+    setMutationError("");
+    setFieldSaving(registeredGroup.id, "case_status", true);
+    try {
+      const res = await fetch(`/api/groups/${registeredGroup.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ case_status: status }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.error || `Group status update failed (${res.status})`);
+      }
+
+      setRegisteredGroups((current) => current.map((group) => (group.id === body.id ? body : group)));
+      return true;
+    } catch (err) {
+      const message = err.message || "Failed to update registered group status";
+      setMutationError(message);
+      alert(message);
+      return false;
+    } finally {
+      setFieldSaving(registeredGroup.id, "case_status", false);
     }
   }
 
@@ -681,16 +698,14 @@ export default function Dashboard() {
                   const isOpen = !!expanded[key];
                   const metrics = groupMetrics(rows);
                   const currency = currencyForRegion(groupRegion);
-                  const submitted = latestDate(rows, (dates) => dates.submitted);
-                  const verdict = latestDate(rows, (dates) => dates.verdict);
+                  const submitted = earliestDateValue(rows, "submission_date");
+                  const verdict = latestDateValue(rows, "verdict_date");
                   const registeredOnlyVenues = registryVenuesWithoutCases({ rows, registryVenues });
                   const venueCount = displayVenueCount({ rows, registryVenues });
-                  const groupStatus = aggregateStatus(rows);
-                  const statusSaving = groupFieldSaving(rows, savingFields, "status");
+                  const groupStatus = groupCaseStatus(registeredGroup, rows);
+                  const statusSaving = registeredGroup ? !!savingFields[fieldKey(registeredGroup.id, "case_status")] : false;
                   const regionSaving = groupFieldSaving(rows, savingFields, "region");
                   const registryRegionSaving = registeredGroup ? !!savingFields[fieldKey(registeredGroup.id, "region")] : false;
-                  const submittedSaving = groupFieldSaving(rows, savingFields, "submission_date");
-                  const verdictSaving = groupFieldSaving(rows, savingFields, "verdict_date");
 
                   return (
                     <Fragment key={key}>
@@ -729,42 +744,21 @@ export default function Dashboard() {
                           {money(metrics.ceiling, currency)}
                         </td>
                         <td style={td}>
-                          {rows.length > 0 ? (
-                            <DateEditor
-                              label={`${group} submitted date`}
-                              value={aggregateDateValue(rows, "submission_date")}
-                              disabled={submittedSaving}
-                              stamp={latestFieldStamp(rows, auditStamps, "submission_date")}
-                              onSave={(value) => updateGroupField(rows, "submission_date", value, group)}
-                            />
-                          ) : (
-                            formatTrackerDate(submitted)
-                          )}
+                          <span className="mz-mono">{formatTrackerDate(submitted)}</span>
                         </td>
                         <td style={td}>
-                          {rows.length > 0 ? (
-                            <DateEditor
-                              label={`${group} verdict date`}
-                              value={aggregateDateValue(rows, "verdict_date")}
-                              disabled={verdictSaving}
-                              stamp={latestFieldStamp(rows, auditStamps, "verdict_date")}
-                              onSave={(value) => updateGroupField(rows, "verdict_date", value, group)}
-                            />
-                          ) : (
-                            formatTrackerDate(verdict)
-                          )}
+                          <span className="mz-mono">{formatTrackerDate(verdict)}</span>
                         </td>
                         <td style={td}>
-                          {rows.length === 0 ? (
-                            <span style={mutedText}>Registered</span>
-                          ) : (
+                          {registeredGroup ? (
                             <StatusSelect
                               value={groupStatus}
                               disabled={statusSaving}
-                              mixedLabel="Mixed status"
                               label={`${group} status`}
-                              onChange={(nextStatus) => updateGroupField(rows, "status", nextStatus, group)}
+                              onChange={(nextStatus) => updateRegisteredGroupStatus(registeredGroup, nextStatus)}
                             />
+                          ) : (
+                            <span style={{ ...mutedText, color: statusStyle(groupStatus).color }}>{statusLabel(groupStatus)}</span>
                           )}
                         </td>
                         <td style={td}>

@@ -20,10 +20,38 @@ import {
   slugifyGroupName,
 } from '../_lib/casePresentation';
 
-function avgScore(cases) {
-  const values = cases.map((c) => Number(c.score)).filter((n) => Number.isFinite(n));
-  if (!values.length) return null;
-  return values.reduce((sum, n) => sum + n, 0) / values.length;
+const ELIGIBLE_STATUSES = new Set(['approved', 'accepted']);
+
+function normalizeStatus(status) {
+  return String(status || '').trim().toLowerCase();
+}
+
+function countsTowardMetrics(c) {
+  return ELIGIBLE_STATUSES.has(normalizeStatus(c?.status));
+}
+
+function venueRevenue(c) {
+  return (
+    Number(c?.ltm_revenue_aed) ||
+    Number(c?.extracted_json?.pos_headline?.net_revenue_ex_tax) ||
+    Number(c?.extracted_json?.credit_score?.ltm_revenue_aed) ||
+    0
+  );
+}
+
+function weightedScore(cases) {
+  const weightedRows = cases
+    .filter(countsTowardMetrics)
+    .map((c) => ({
+      score: Number(c.score),
+      revenue: venueRevenue(c),
+    }))
+    .filter((row) => Number.isFinite(row.score) && row.revenue > 0);
+
+  const totalRevenue = weightedRows.reduce((sum, row) => sum + row.revenue, 0);
+  if (!totalRevenue) return null;
+
+  return weightedRows.reduce((sum, row) => sum + row.score * row.revenue, 0) / totalRevenue;
 }
 
 function groupRows(cases) {
@@ -36,10 +64,12 @@ function groupRows(cases) {
     map.get(key).cases.push(c);
   }
   return Array.from(map.values()).map((row) => {
-    const revenue = row.cases.reduce((sum, c) => sum + (Number(c.ltm_revenue_aed) || 0), 0);
-    const recommended = row.cases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
-    const average = avgScore(row.cases);
-    return { ...row, revenue, recommended, average };
+    const eligible = row.cases.filter(countsTowardMetrics);
+    const revenue = row.cases.reduce((sum, c) => sum + venueRevenue(c), 0);
+    const eligibleRevenue = eligible.reduce((sum, c) => sum + venueRevenue(c), 0);
+    const recommended = eligible.reduce((sum, c) => sum + recommendedCeiling(c), 0);
+    const average = weightedScore(row.cases);
+    return { ...row, revenue, eligibleRevenue, recommended, average };
   });
 }
 
@@ -54,13 +84,14 @@ function statusRows(cases) {
 
 function regionSummary(cases, region) {
   const rows = cases.filter((c) => caseRegion(c) === region);
+  const eligible = rows.filter(countsTowardMetrics);
   const groups = new Set(rows.map(caseGroup));
-  const recommended = rows.reduce((sum, c) => sum + recommendedCeiling(c), 0);
+  const recommended = eligible.reduce((sum, c) => sum + recommendedCeiling(c), 0);
   return {
     region,
     cases: rows.length,
     groups: groups.size,
-    average: avgScore(rows),
+    average: weightedScore(rows),
     recommended,
     currency: currencyForRegion(region),
   };
@@ -113,6 +144,7 @@ export default function AnalyticsPage() {
     return cases.filter((c) => caseRegion(c) === regionFilter);
   }, [cases, regionFilter]);
   const visibleCases = useMemo(() => filterCasesByQuery(regionCases, query), [regionCases, query]);
+  const eligibleVisibleCases = useMemo(() => visibleCases.filter(countsTowardMetrics), [visibleCases]);
   const groups = useMemo(() => groupRows(visibleCases), [visibleCases]);
   const statuses = useMemo(() => statusRows(visibleCases), [visibleCases]);
   const regions = useMemo(() => {
@@ -123,17 +155,17 @@ export default function AnalyticsPage() {
   const maxGroupExposure = Math.max(...groups.map((g) => g.recommended), 1);
   const topGroups = [...groups].sort((a, b) => b.recommended - a.recommended).slice(0, 8);
   const topRevenueGroups = [...groups].sort((a, b) => b.revenue - a.revenue).slice(0, 8);
-  const totalRecommended = visibleCases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
-  const totalRevenue = visibleCases.reduce((sum, c) => sum + (Number(c.ltm_revenue_aed) || 0), 0);
-  const scoreBands = scoreBandRows(visibleCases);
+  const totalRecommended = eligibleVisibleCases.reduce((sum, c) => sum + recommendedCeiling(c), 0);
+  const totalRevenue = visibleCases.reduce((sum, c) => sum + venueRevenue(c), 0);
+  const scoreBands = scoreBandRows(eligibleVisibleCases);
   const maxScoreBand = Math.max(...scoreBands.map((row) => row.count), 1);
   const lendingRatioGroups = [...groups]
-    .filter((g) => g.revenue > 0 && g.recommended > 0)
-    .map((g) => ({ ...g, ratio: g.recommended / g.revenue }))
+    .filter((g) => g.eligibleRevenue > 0 && g.recommended > 0)
+    .map((g) => ({ ...g, ratio: g.recommended / g.eligibleRevenue }))
     .sort((a, b) => b.ratio - a.ratio)
     .slice(0, 8);
   const maxLendingRatio = Math.max(...lendingRatioGroups.map((g) => g.ratio), 0.01);
-  const topVenues = [...visibleCases]
+  const topVenues = [...eligibleVisibleCases]
     .sort((a, b) => recommendedCeiling(b) - recommendedCeiling(a))
     .slice(0, 8);
 

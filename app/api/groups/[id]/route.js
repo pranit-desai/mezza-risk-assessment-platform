@@ -4,10 +4,22 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { logSupabaseError } from '@/lib/supabaseDiagnostics';
 import { resolvePublicUser } from '@/lib/publicUser';
 
+const GROUP_CASE_STATUSES = new Set([
+  'under_review',
+  'approved',
+  'rejected',
+  'on_hold',
+  'additional_documents_requested',
+]);
+
 async function requireUser() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   return user;
+}
+
+function normalizeCaseStatus(status) {
+  return String(status || '').trim().toLowerCase();
 }
 
 export async function GET(request, { params }) {
@@ -60,34 +72,68 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const region = String(body?.region || '').toUpperCase();
-  if (!['UAE', 'USA'].includes(region)) {
-    return NextResponse.json({ error: 'region must be UAE or USA' }, { status: 400 });
+  const hasRegion = Object.prototype.hasOwnProperty.call(body || {}, 'region');
+  const hasCaseStatus = Object.prototype.hasOwnProperty.call(body || {}, 'case_status');
+
+  if (!hasRegion && !hasCaseStatus) {
+    return NextResponse.json({ error: 'No supported group field provided' }, { status: 400 });
   }
 
-  const { error: updateError } = await supabaseAdmin.rpc('update_group_region', {
-    p_group_id: id,
-    p_region: region,
-    p_updated_by: publicUser.id,
-  });
+  if (hasRegion) {
+    const region = String(body?.region || '').toUpperCase();
+    if (!['UAE', 'USA'].includes(region)) {
+      return NextResponse.json({ error: 'region must be UAE or USA' }, { status: 400 });
+    }
 
-  if (updateError) {
-    if (updateError.code === 'P0002') {
-      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
-    }
-    if (updateError.code === '42883') {
-      return NextResponse.json(
-        { error: 'Group region update migration has not been applied.' },
-        { status: 500 }
-      );
-    }
-    logSupabaseError('Group region update failed', updateError, {
-      groupId: id,
-      region,
-      authUserId: user.id,
-      publicUserId: publicUser.id,
+    const { error: updateError } = await supabaseAdmin.rpc('update_group_region', {
+      p_group_id: id,
+      p_region: region,
+      p_updated_by: publicUser.id,
     });
-    return NextResponse.json({ error: 'Failed to update group region' }, { status: 500 });
+
+    if (updateError) {
+      if (updateError.code === 'P0002') {
+        return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+      }
+      if (updateError.code === '42883') {
+        return NextResponse.json(
+          { error: 'Group region update migration has not been applied.' },
+          { status: 500 }
+        );
+      }
+      logSupabaseError('Group region update failed', updateError, {
+        groupId: id,
+        region,
+        authUserId: user.id,
+        publicUserId: publicUser.id,
+      });
+      return NextResponse.json({ error: 'Failed to update group region' }, { status: 500 });
+    }
+  }
+
+  if (hasCaseStatus) {
+    const caseStatus = normalizeCaseStatus(body?.case_status);
+    if (!GROUP_CASE_STATUSES.has(caseStatus)) {
+      return NextResponse.json({ error: 'case_status is invalid' }, { status: 400 });
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from('groups')
+      .update({
+        case_status: caseStatus,
+        updated_by: publicUser.id,
+      })
+      .eq('id', id);
+
+    if (updateError) {
+      logSupabaseError('Group case status update failed', updateError, {
+        groupId: id,
+        caseStatus,
+        authUserId: user.id,
+        publicUserId: publicUser.id,
+      });
+      return NextResponse.json({ error: 'Failed to update group status' }, { status: 500 });
+    }
   }
 
   const { data, error } = await supabaseAdmin
