@@ -5,8 +5,6 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import StatusBadge from "../../_components/StatusBadge";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
 function fm(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
   if (n >= 1e6) return "AED " + (n / 1e6).toFixed(2) + "M";
@@ -32,7 +30,8 @@ const ANALYST_STATUSES = [
   { value: "under_review", label: "Under Review" },
   { value: "additional_documents_requested", label: "Additional Documents Requested" },
   { value: "approved", label: "Approved" },
-  { value: "declined", label: "Declined" },
+  { value: "rejected", label: "Rejected" },
+  { value: "on_hold", label: "On Hold" },
 ];
 
 function KpiCard({ label, value, sub, color, danger, mono }) {
@@ -73,7 +72,7 @@ export default function CaseOverviewPage() {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch(`${API_BASE_URL}/cases/${caseId}`, { cache: "no-store" });
+      const res = await fetch(`/api/cases/${caseId}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to fetch case: ${res.status}`);
       const data = await res.json();
       setCaseData(data);
@@ -96,7 +95,7 @@ export default function CaseOverviewPage() {
     if (!caseData) return;
     setUpdatingStatus(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/cases/${caseData.id}/field`, {
+      const res = await fetch(`/api/cases/${caseData.id}/field`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -250,7 +249,7 @@ export default function CaseOverviewPage() {
 
       <div style={{ marginBottom: 22, display: "flex", gap: 12 }}>
         <Link
-          href={`/cases/${caseData.case_ref || caseData.id}/data-bank`}
+          href={`/cases/${caseData.id}/data-bank`}
           className="mz-clickable"
           style={{ padding: "10px 18px", display: "inline-block" }}
         >

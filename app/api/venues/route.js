@@ -44,7 +44,7 @@ export async function POST(req) {
   // region is always set server-side from the parent group — never trusted from the client
   const { data: group, error: groupError } = await supabaseAdmin
     .from('groups')
-    .select('id, region')
+    .select('id, group_name, region')
     .eq('id', group_id.trim())
     .single();
 
@@ -82,5 +82,33 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Failed to create venue' }, { status: 500 });
   }
 
-  return NextResponse.json(data, { status: 201 });
+  const { data: createdCase, error: caseError } = await supabaseAdmin
+    .from('cases')
+    .insert({
+      group_id: group.id,
+      venue_id: data.id,
+      group_name: group.group_name,
+      venue_name: data.venue_name,
+      location: data.location,
+      concept: data.concept,
+      region: data.region,
+      status: 'under_review',
+      created_by: publicUser.id,
+    })
+    .select()
+    .single();
+
+  if (caseError) {
+    await supabaseAdmin.from('venues').delete().eq('id', data.id);
+    logSupabaseError('Case create for venue failed', caseError, {
+      authUserId: user.id,
+      publicUserId: publicUser.id,
+      groupId: group.id,
+      venueId: data.id,
+      region: group.region,
+    });
+    return NextResponse.json({ error: 'Failed to create case for venue' }, { status: 500 });
+  }
+
+  return NextResponse.json({ ...data, case: createdCase }, { status: 201 });
 }

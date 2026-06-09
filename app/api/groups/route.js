@@ -16,7 +16,7 @@ export async function GET() {
 
   const { data, error } = await supabaseAdmin
     .from('groups')
-    .select('*, venues!venues_group_id_fkey(id, venue_name, status, created_at)')
+    .select('*, venues!venues_group_id_fkey(id, venue_name, status, region, created_at)')
     .order('created_at', { ascending: false });
 
   if (error) {

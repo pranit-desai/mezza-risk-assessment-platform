@@ -98,6 +98,10 @@
   --mz-status-under-review-border:    rgba(200, 160, 0, 0.38);
   --mz-status-under-review-text:      #c8a000;
 
+  --mz-status-on-hold-bg:             rgba(153, 128, 232, 0.12);
+  --mz-status-on-hold-border:         rgba(153, 128, 232, 0.38);
+  --mz-status-on-hold-text:           #9980e8;
+
   --mz-status-docs-requested-bg:      rgba(200, 114, 0, 0.12);
   --mz-status-docs-requested-border:  rgba(200, 114, 0, 0.38);
   --mz-status-docs-requested-text:    #c87200;

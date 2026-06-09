@@ -9,8 +9,6 @@ import {
   SECTIONS_BY_ID,
 } from "../../../_lib/dataBankSchema";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
 function getByPath(obj, path) {
   if (!obj || !path) return undefined;
   return path.split(".").reduce((acc, key) => {
@@ -107,7 +105,7 @@ export default function DataBankPage() {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch(`${API_BASE_URL}/cases/${caseId}`, { cache: "no-store" });
+      const res = await fetch(`/api/cases/${caseId}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to fetch case: ${res.status}`);
       const data = await res.json();
       setCaseData(data);
@@ -493,7 +491,7 @@ function FieldRow({ field, value, caseId, fieldPath, onOverrideSaved }) {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE_URL}/cases/${caseId}/extracted-field`, {
+      const res = await fetch(`/api/cases/${caseId}/extracted-field`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

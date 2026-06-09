@@ -23,7 +23,6 @@ import {
   trackerDates,
 } from '../../_lib/casePresentation';
 
-const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 const SETTINGS_API = '/api/group-lending';
 
 function formatMoney(n, currency) {
@@ -94,7 +93,7 @@ export default function GroupDashboardPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API}/cases`, { cache: 'no-store' });
+        const res = await fetch('/api/cases', { cache: 'no-store' });
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
         setCases(Array.isArray(data) ? data : data.cases ?? []);

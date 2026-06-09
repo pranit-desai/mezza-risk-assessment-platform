@@ -6,26 +6,36 @@ import CaseSearchBox from "./_components/CaseSearchBox";
 import DashboardControls from "./_components/DashboardControls";
 import DashboardTabs from "./_components/DashboardTabs";
 import RegionBadge from "./_components/RegionBadge";
-import StatusBadge from "./_components/StatusBadge";
 import { filterCasesByQuery } from "./_lib/caseSearch";
 import {
   caseGroup,
   caseRegion,
   caseVenue,
   currencyForRegion,
-  decisionText,
   formatCurrencyAmount,
   formatTrackerDate,
   lendingAmountColor,
-  rationaleText,
   recommendedCeiling,
   scoreColor,
   shortCaseRef,
+  statusLabel,
+  statusStyle,
   trackerDates,
 } from "./_lib/casePresentation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 const ELIGIBLE_STATUSES = new Set(["approved", "accepted"]);
+const REGION_OPTIONS = ["UAE", "USA"];
+const STATUS_OPTIONS = [
+  { value: "under_review", label: "Under Review" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "additional_documents_requested", label: "Additional Documents" },
+];
+const CHANGED_BY = "Pranit";
+const AUDITED_FIELDS = new Set(["submission_date", "verdict_date"]);
+const LOCAL_CASE_FIELDS = new Set(["region", "submission_date", "verdict_date", "status"]);
 
 function normalizeStatus(status) {
   return String(status || "").trim().toLowerCase();
@@ -63,10 +73,22 @@ function gradeForScore(score) {
   const value = Number(score);
   if (!Number.isFinite(value) || value <= 0) return "-";
   if (value >= 80) return "A";
-  if (value >= 70) return "B+";
-  if (value >= 60) return "B";
-  if (value >= 50) return "C";
+  if (value >= 75) return "B+";
+  if (value >= 70) return "B";
+  if (value >= 65) return "C+";
   return "NM";
+}
+
+function gradeColor(grade, score) {
+  const value = Number(score);
+  if (Number.isFinite(value)) return scoreColor(value);
+  const key = String(grade || "").trim().toUpperCase();
+  if (key === "A") return scoreColor(85);
+  if (key === "B+") return scoreColor(76);
+  if (key === "B") return scoreColor(72);
+  if (key === "C+" || key === "C") return scoreColor(66);
+  if (key === "NM") return scoreColor(20);
+  return "var(--mz-muted)";
 }
 
 function money(n, currency = "AED") {
@@ -143,11 +165,190 @@ function groupMetrics(rows) {
   };
 }
 
-function venueWeight(c, metrics) {
-  if (!countsTowardGroupMetrics(c)) return "Excluded";
-  const revenue = venueRevenue(c);
-  if (!metrics.revenue || !revenue) return "-";
-  return `${((revenue / metrics.revenue) * 100).toFixed(1)}%`;
+function dateInputValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function aggregateStatus(rows) {
+  if (!rows.length) return "";
+  const statuses = new Set(rows.map((row) => normalizeStatus(row.status)));
+  if (statuses.size === 1) return Array.from(statuses)[0];
+  return "";
+}
+
+function aggregateDateValue(rows, fieldName) {
+  if (!rows.length) return "";
+  const values = new Set(rows.map((row) => dateInputValue(row[fieldName])).filter(Boolean));
+  if (values.size === 1) return Array.from(values)[0];
+  return "";
+}
+
+function optionsWithCurrent(options, value, labelForValue = statusLabel) {
+  if (!value || options.some((option) => option.value === value)) return options;
+  return [{ value, label: labelForValue(value) }, ...options];
+}
+
+function fieldKey(id, fieldName) {
+  return `${id}:${fieldName}`;
+}
+
+function apiFieldValue(value) {
+  if (value === null || value === undefined) return "";
+  return String(value);
+}
+
+function groupFieldSaving(rows, savingFields, fieldName) {
+  return rows.some((row) => savingFields[fieldKey(row.id, fieldName)]);
+}
+
+function latestFieldStamp(rows, auditStamps, fieldName) {
+  const stamps = rows
+    .map((row) => auditStamps[fieldKey(row.id, fieldName)] || row?._audit_stamps?.[fieldName])
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.at) - new Date(a.at));
+  return stamps[0] || null;
+}
+
+function fieldStamp(row, auditStamps, fieldName) {
+  return auditStamps[fieldKey(row.id, fieldName)] || row?._audit_stamps?.[fieldName] || null;
+}
+
+function SelectControl({ label, value, options, onChange, disabled, color, mixedLabel }) {
+  const renderedOptions = optionsWithCurrent(options, value);
+  return (
+    <select
+      aria-label={label}
+      value={value || ""}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+      style={{
+        ...controlSelect,
+        color: color || "var(--mz-text)",
+        opacity: disabled ? 0.55 : 1,
+      }}
+    >
+      {mixedLabel && <option value="">{mixedLabel}</option>}
+      {renderedOptions.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function StatusSelect({ value, onChange, disabled, label, mixedLabel }) {
+  return (
+    <SelectControl
+      label={label}
+      value={value}
+      options={STATUS_OPTIONS}
+      onChange={onChange}
+      disabled={disabled}
+      mixedLabel={mixedLabel}
+      color={value ? statusStyle(value).color : "var(--mz-muted)"}
+    />
+  );
+}
+
+function RegionSelect({ value, onChange, disabled, label }) {
+  return (
+    <select
+      aria-label={label}
+      value={value || "UAE"}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+      style={{
+        ...controlSelect,
+        width: 92,
+        color: value === "USA" ? "var(--mz-region-usa-text)" : "var(--mz-region-uae-text)",
+        opacity: disabled ? 0.55 : 1,
+      }}
+    >
+      {REGION_OPTIONS.map((option) => {
+        return (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        );
+      })}
+    </select>
+  );
+}
+
+function formatAuditTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function AuditStamp({ stamp }) {
+  const text = stamp ? `${stamp.by} · ${formatAuditTime(stamp.at)}` : "No date audit yet";
+  return <div style={{ ...mutedText, marginTop: 5 }}>{text}</div>;
+}
+
+function DateEditor({ label, value, onSave, disabled, stamp }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(dateInputValue(value));
+  const displayValue = formatTrackerDate(value);
+
+  function startEditing() {
+    setDraft(dateInputValue(value));
+    setEditing(true);
+  }
+
+  async function save() {
+    const success = await onSave(draft || null);
+    if (success) setEditing(false);
+  }
+
+  if (!editing) {
+    return (
+      <div>
+        <div style={dateDisplay}>
+          <span className="mz-mono">{displayValue}</span>
+          <button type="button" className="mz-clickable" onClick={startEditing} disabled={disabled} style={miniButton}>
+            Edit
+          </button>
+        </div>
+        <AuditStamp stamp={stamp} />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <input
+        aria-label={label}
+        type="date"
+        value={draft}
+        disabled={disabled}
+        onChange={(event) => setDraft(event.target.value)}
+        style={{
+          ...dateControl,
+          opacity: disabled ? 0.55 : 1,
+        }}
+      />
+      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+        <button type="button" className="mz-clickable" onClick={save} disabled={disabled} style={miniButton}>
+          Save
+        </button>
+        <button type="button" className="mz-clickable" onClick={() => setEditing(false)} disabled={disabled} style={miniButton}>
+          Cancel
+        </button>
+      </div>
+      <AuditStamp stamp={stamp} />
+    </div>
+  );
 }
 
 function Tile({ label, value, color }) {
@@ -179,12 +380,15 @@ export default function Dashboard() {
   const [expanded, setExpanded] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [mutationError, setMutationError] = useState("");
+  const [savingFields, setSavingFields] = useState({});
+  const [auditStamps, setAuditStamps] = useState({});
 
   useEffect(() => {
     (async () => {
       try {
         const [casesRes, groupsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/cases`, { cache: "no-store" }),
+          fetch("/api/cases", { cache: "no-store" }),
           fetch("/api/groups", { cache: "no-store" }),
         ]);
         if (!casesRes.ok) throw new Error(`Cases status ${casesRes.status}`);
@@ -229,6 +433,136 @@ export default function Dashboard() {
 
   function toggle(key) {
     setExpanded((current) => ({ ...current, [key]: !current[key] }));
+  }
+
+  function setFieldSaving(caseId, fieldName, saving) {
+    setSavingFields((current) => {
+      const next = { ...current };
+      if (saving) {
+        next[fieldKey(caseId, fieldName)] = true;
+      } else {
+        delete next[fieldKey(caseId, fieldName)];
+      }
+      return next;
+    });
+  }
+
+  async function updateCaseField(c, fieldName, newValue) {
+    if (!c?.id) return false;
+    const oldValue = c[fieldName] ?? null;
+    if ((oldValue ?? "") === (newValue ?? "")) return true;
+
+    setMutationError("");
+    setFieldSaving(c.id, fieldName, true);
+    try {
+      const fieldUrl = LOCAL_CASE_FIELDS.has(fieldName)
+        ? `/api/cases/${c.id}/field`
+        : `${API_BASE_URL}/cases/${c.id}/field`;
+      const res = await fetch(fieldUrl, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          field_name: fieldName,
+          old_value: apiFieldValue(oldValue),
+          new_value: apiFieldValue(newValue),
+          changed_by: CHANGED_BY,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Update failed (${res.status}): ${body.slice(0, 180)}`);
+      }
+
+      const updated = await res.json();
+      const localValue = newValue === "" ? null : newValue;
+      setCases((current) => current.map((row) => {
+        if (row.id !== c.id) return row;
+        const merged = { ...row, ...updated, [fieldName]: localValue };
+        if (!LOCAL_CASE_FIELDS.has(fieldName)) {
+          for (const localField of LOCAL_CASE_FIELDS) {
+            if (row[localField] !== undefined) merged[localField] = row[localField];
+          }
+        }
+        return merged;
+      }));
+      if (AUDITED_FIELDS.has(fieldName)) {
+        setAuditStamps((current) => ({
+          ...current,
+          [fieldKey(c.id, fieldName)]: { by: CHANGED_BY, at: new Date().toISOString() },
+        }));
+      }
+      return true;
+    } catch (err) {
+      const message = err.message || "Failed to update case";
+      setMutationError(message);
+      alert(message);
+      return false;
+    } finally {
+      setFieldSaving(c.id, fieldName, false);
+    }
+  }
+
+  async function updateGroupField(rows, fieldName, newValue, groupName) {
+    if (newValue === "" || newValue === undefined || rows.length === 0) return;
+    const confirmed = window.confirm(
+      `Update ${fieldName.replace(/_/g, " ")} for ${rows.length} venue case${rows.length === 1 ? "" : "s"} in ${groupName}?`
+    );
+    if (!confirmed) return false;
+
+    for (const row of rows) {
+      const success = await updateCaseField(row, fieldName, newValue);
+      if (!success) return false;
+    }
+    return true;
+  }
+
+  async function updateRegisteredGroupRegion(registeredGroup, nextRegion) {
+    if (!registeredGroup?.id || nextRegion === caseRegion(registeredGroup)) return true;
+    setMutationError("");
+    setFieldSaving(registeredGroup.id, "region", true);
+    try {
+      const res = await fetch(`/api/groups/${registeredGroup.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ region: nextRegion }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.error || `Group region update failed (${res.status})`);
+      }
+
+      setRegisteredGroups((current) => current.map((group) => (group.id === body.id ? body : group)));
+      return true;
+    } catch (err) {
+      const message = err.message || "Failed to update registered group region";
+      setMutationError(message);
+      alert(message);
+      return false;
+    } finally {
+      setFieldSaving(registeredGroup.id, "region", false);
+    }
+  }
+
+  async function updateGroupRegion(rows, nextRegion, groupName, currentRegion, registeredGroup = null) {
+    if (nextRegion === currentRegion) return;
+    const confirmed = window.confirm(
+      rows.length > 0
+        ? `Change ${groupName} from ${currentRegion} to ${nextRegion} for ${rows.length} venue case${rows.length === 1 ? "" : "s"}?`
+        : `Change ${groupName} from ${currentRegion} to ${nextRegion}?`
+    );
+    if (!confirmed) return;
+
+    if (registeredGroup) {
+      const registrySuccess = await updateRegisteredGroupRegion(registeredGroup, nextRegion);
+      if (!registrySuccess) return;
+    }
+
+    for (const row of rows) {
+      const success = await updateCaseField(row, "region", nextRegion);
+      if (!success) return;
+    }
   }
 
   return (
@@ -299,6 +633,14 @@ export default function Dashboard() {
           </div>
         )}
 
+        {mutationError && !error && (
+          <div style={{ padding: "0 22px 16px" }}>
+            <div style={errorBox}>
+              {mutationError}
+            </div>
+          </div>
+        )}
+
         {!loading && !error && cases.length === 0 && registeredGroups.length === 0 && (
           <div style={emptyState}>
             No cases or registered groups found.
@@ -313,7 +655,7 @@ export default function Dashboard() {
 
         {!loading && !error && groups.length > 0 && (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1260 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1120 }}>
               <thead>
                 <tr style={{ background: "var(--mz-card-subtle)" }}>
                   {[
@@ -322,13 +664,10 @@ export default function Dashboard() {
                     "Venues",
                     "Score",
                     "Grade",
-                    "Weight",
-                    "Recommended Ceiling",
-                    "Status",
+                    "Rec. Ceiling",
                     "Submitted",
-                    "First Response",
                     "Verdict",
-                    "Decision",
+                    "Status",
                     "",
                   ].map((h) => (
                     <th key={h} style={th}>
@@ -338,15 +677,20 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {groups.map(({ key, region: groupRegion, group, rows, registryVenues }) => {
+                {groups.map(({ key, region: groupRegion, group, rows, registryVenues, registeredGroup }) => {
                   const isOpen = !!expanded[key];
                   const metrics = groupMetrics(rows);
                   const currency = currencyForRegion(groupRegion);
                   const submitted = latestDate(rows, (dates) => dates.submitted);
-                  const firstResponse = latestDate(rows, (dates) => dates.firstResponse);
                   const verdict = latestDate(rows, (dates) => dates.verdict);
                   const registeredOnlyVenues = registryVenuesWithoutCases({ rows, registryVenues });
                   const venueCount = displayVenueCount({ rows, registryVenues });
+                  const groupStatus = aggregateStatus(rows);
+                  const statusSaving = groupFieldSaving(rows, savingFields, "status");
+                  const regionSaving = groupFieldSaving(rows, savingFields, "region");
+                  const registryRegionSaving = registeredGroup ? !!savingFields[fieldKey(registeredGroup.id, "region")] : false;
+                  const submittedSaving = groupFieldSaving(rows, savingFields, "submission_date");
+                  const verdictSaving = groupFieldSaving(rows, savingFields, "verdict_date");
 
                   return (
                     <Fragment key={key}>
@@ -362,34 +706,66 @@ export default function Dashboard() {
                           </button>
                           {group}
                         </td>
-                        <td style={td}><RegionBadge region={groupRegion} /></td>
+                        <td style={td}>
+                          {rows.length > 0 || registeredGroup ? (
+                            <RegionSelect
+                              value={groupRegion}
+                              disabled={regionSaving || registryRegionSaving}
+                              label={`${group} region`}
+                              onChange={(nextRegion) => updateGroupRegion(rows, nextRegion, group, groupRegion, registeredGroup)}
+                            />
+                          ) : (
+                            <RegionBadge region={groupRegion} />
+                          )}
+                        </td>
                         <td style={td} className="mz-mono">{venueCount}</td>
                         <td style={{ ...td, color: scoreColor(metrics.score), fontWeight: 900 }} className="mz-mono">
                           {metrics.score != null ? metrics.score.toFixed(1) : "-"}
                         </td>
-                        <td style={td}>{metrics.grade}</td>
-                        <td style={td}>{metrics.eligible.length} included</td>
+                        <td style={{ ...td, color: gradeColor(metrics.grade, metrics.score), fontWeight: 900 }}>
+                          {metrics.grade}
+                        </td>
                         <td style={{ ...td, color: lendingAmountColor(metrics.ceiling), fontWeight: 900 }} className="mz-mono">
                           {money(metrics.ceiling, currency)}
                         </td>
                         <td style={td}>
-                          {rows.length === 0 ? (
-                            <span style={mutedText}>Registered</span>
-                          ) : metrics.eligible.length === rows.length ? (
-                            <StatusBadge status="approved" />
+                          {rows.length > 0 ? (
+                            <DateEditor
+                              label={`${group} submitted date`}
+                              value={aggregateDateValue(rows, "submission_date")}
+                              disabled={submittedSaving}
+                              stamp={latestFieldStamp(rows, auditStamps, "submission_date")}
+                              onSave={(value) => updateGroupField(rows, "submission_date", value, group)}
+                            />
                           ) : (
-                            <span style={mutedText}>{metrics.eligible.length} / {rows.length} approved</span>
+                            formatTrackerDate(submitted)
                           )}
                         </td>
-                        <td style={td}>{formatTrackerDate(submitted)}</td>
-                        <td style={td}>{formatTrackerDate(firstResponse)}</td>
-                        <td style={td}>{formatTrackerDate(verdict)}</td>
                         <td style={td}>
-                          {rows.length === 0
-                            ? "Awaiting case data"
-                            : metrics.eligible.length
-                              ? "Included in lending model"
-                              : "Not in lending model"}
+                          {rows.length > 0 ? (
+                            <DateEditor
+                              label={`${group} verdict date`}
+                              value={aggregateDateValue(rows, "verdict_date")}
+                              disabled={verdictSaving}
+                              stamp={latestFieldStamp(rows, auditStamps, "verdict_date")}
+                              onSave={(value) => updateGroupField(rows, "verdict_date", value, group)}
+                            />
+                          ) : (
+                            formatTrackerDate(verdict)
+                          )}
+                        </td>
+                        <td style={td}>
+                          {rows.length === 0 ? (
+                            <span style={mutedText}>Registered</span>
+                          ) : (
+                            <StatusSelect
+                              value={groupStatus}
+                              disabled={statusSaving}
+                              mixedLabel="Mixed status"
+                              label={`${group} status`}
+                              onChange={(nextStatus) => updateGroupField(rows, "status", nextStatus, group)}
+                            />
+                          )}
                         </td>
                         <td style={td}>
                           <Link
@@ -403,11 +779,13 @@ export default function Dashboard() {
                       </tr>
 
                       {isOpen && rows.map((c) => {
-                        const dates = trackerDates(c);
                         const eligible = countsTowardGroupMetrics(c);
                         const ceiling = recommendedCeiling(c);
-                        const rationale = rationaleText(c);
                         const score = Number(c.score);
+                        const currentStatus = normalizeStatus(c.status);
+                        const rowStatusSaving = !!savingFields[fieldKey(c.id, "status")];
+                        const submittedSaving = !!savingFields[fieldKey(c.id, "submission_date")];
+                        const verdictSaving = !!savingFields[fieldKey(c.id, "verdict_date")];
                         return (
                           <tr key={c.id} style={{ borderTop: "1px solid var(--mz-border-subtle)" }}>
                             <td style={{ ...td, paddingLeft: 54 }}>
@@ -418,27 +796,44 @@ export default function Dashboard() {
                                 <span style={{ marginLeft: 10, fontWeight: 800 }}>{caseVenue(c)}</span>
                               </Link>
                             </td>
-                            <td style={td}>-</td>
+                            <td style={td}>
+                              <RegionBadge region={caseRegion(c)} />
+                            </td>
                             <td style={td} className="mz-mono">1</td>
                             <td style={{ ...td, color: scoreColor(score), fontWeight: 900 }} className="mz-mono">
                               {Number.isFinite(score) ? score.toFixed(1) : "-"}
                             </td>
-                            <td style={td}>{c.grade || gradeForScore(score)}</td>
-                            <td style={td}>{venueWeight(c, metrics)}</td>
+                            <td style={{ ...td, color: gradeColor(c.grade, score), fontWeight: 900 }}>
+                              {c.grade || gradeForScore(score)}
+                            </td>
                             <td style={{ ...td, color: eligible ? lendingAmountColor(ceiling) : "var(--mz-muted)", fontWeight: 900 }} className="mz-mono">
                               {eligible ? money(ceiling, currency) : "Excluded"}
                             </td>
-                            <td style={td}><StatusBadge status={c.status} /></td>
-                            <td style={td}>{formatTrackerDate(dates.submitted)}</td>
-                            <td style={td}>{formatTrackerDate(dates.firstResponse)}</td>
-                            <td style={td}>{formatTrackerDate(dates.verdict)}</td>
+                            <td style={td}>
+                              <DateEditor
+                                label={`${caseVenue(c)} submitted date`}
+                                value={c.submission_date}
+                                disabled={submittedSaving}
+                                stamp={fieldStamp(c, auditStamps, "submission_date")}
+                                onSave={(value) => updateCaseField(c, "submission_date", value)}
+                              />
+                            </td>
+                            <td style={td}>
+                              <DateEditor
+                                label={`${caseVenue(c)} verdict date`}
+                                value={c.verdict_date}
+                                disabled={verdictSaving}
+                                stamp={fieldStamp(c, auditStamps, "verdict_date")}
+                                onSave={(value) => updateCaseField(c, "verdict_date", value)}
+                              />
+                            </td>
                             <td style={{ ...td, maxWidth: 280 }}>
-                              <div style={{ fontWeight: 800 }}>{decisionText(c)}</div>
-                              {rationale && (
-                                <div style={{ ...mutedText, marginTop: 4 }}>
-                                  {String(rationale).slice(0, 120)}
-                                </div>
-                              )}
+                              <StatusSelect
+                                value={currentStatus}
+                                disabled={rowStatusSaving}
+                                label={`${caseVenue(c)} status`}
+                                onChange={(nextStatus) => updateCaseField(c, "status", nextStatus)}
+                              />
                             </td>
                             <td style={td}>
                               <Link className="mz-clickable" href={`/cases/${c.id}`} style={smallAction}>
@@ -455,17 +850,14 @@ export default function Dashboard() {
                             <span style={{ fontWeight: 800 }}>{venue.venue_name}</span>
                             <div style={{ ...mutedText, marginTop: 4 }}>Registered venue, case pending</div>
                           </td>
-                          <td style={td}>-</td>
+                          <td style={td}><RegionBadge region={groupRegion} /></td>
                           <td style={td} className="mz-mono">1</td>
                           <td style={td}>-</td>
                           <td style={td}>-</td>
-                          <td style={td}>No case yet</td>
-                          <td style={td}>-</td>
-                          <td style={td}><StatusBadge status={venue.status || "active"} /></td>
                           <td style={td}>-</td>
                           <td style={td}>-</td>
                           <td style={td}>-</td>
-                          <td style={td}>Awaiting case data</td>
+                          <td style={td}><span style={mutedText}>Registered</span></td>
                           <td style={td}>
                             <Link
                               className="mz-clickable"
@@ -513,6 +905,7 @@ const th = {
   textTransform: "uppercase",
   letterSpacing: 1.2,
   borderBottom: "1px solid var(--mz-border-soft)",
+  whiteSpace: "nowrap",
 };
 
 const td = {
@@ -532,4 +925,33 @@ const smallAction = {
   textDecoration: "none",
   whiteSpace: "nowrap",
   display: "inline-flex",
+};
+
+const controlSelect = {
+  width: 148,
+  minHeight: 31,
+  padding: "5px 8px",
+  fontSize: "var(--mz-fs-xs)",
+  fontWeight: 800,
+};
+
+const dateControl = {
+  width: 132,
+  minHeight: 31,
+  padding: "5px 8px",
+  fontSize: "var(--mz-fs-xs)",
+  fontWeight: 700,
+};
+
+const dateDisplay = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  minHeight: 31,
+};
+
+const miniButton = {
+  padding: "4px 8px",
+  fontSize: "var(--mz-fs-xxs)",
+  fontWeight: 800,
 };
