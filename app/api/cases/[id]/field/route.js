@@ -108,7 +108,6 @@ export async function PATCH(request, { params }) {
     .from('cases')
     .update({
       [fieldName]: newValue,
-      updated_by: publicUser.id,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -128,15 +127,24 @@ export async function PATCH(request, { params }) {
   }
 
   if (AUDITED_FIELDS.has(fieldName)) {
-    await supabaseAdmin.from('audit_log').insert({
+    const { error: auditError } = await supabaseAdmin.from('audit_log').insert({
       case_id: id,
       field_name: fieldName,
       old_value: oldValue == null ? null : String(oldValue),
       new_value: newValue == null ? null : String(newValue),
       value_type: 'top_level',
-      changed_by: publicUser.id,
-      changed_by_email: publicUser.email,
+      changed_by: publicUser.email || publicUser.id,
+      changed_at: new Date().toISOString(),
     });
+
+    if (auditError) {
+      logSupabaseError('Case field audit insert failed', auditError, {
+        caseId: id,
+        fieldName,
+        authUserId: user.id,
+        publicUserId: publicUser.id,
+      });
+    }
   }
 
   return NextResponse.json(data);

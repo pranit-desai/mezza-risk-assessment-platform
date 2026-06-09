@@ -93,7 +93,6 @@ export async function POST(req) {
       concept: data.concept,
       region: data.region,
       status: 'under_review',
-      created_by: publicUser.id,
     })
     .select()
     .single();

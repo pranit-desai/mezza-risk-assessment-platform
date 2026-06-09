@@ -546,8 +546,8 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
   old_value        text,
   new_value        text,
   value_type       text NOT NULL DEFAULT 'top_level' CHECK (value_type IN ('top_level', 'extracted_field')),
-  changed_by       uuid REFERENCES public.users(id),
-  changed_by_email text,
+  changed_by       text,
+  changed_at       timestamptz,
   created_at       timestamptz NOT NULL DEFAULT now()
 );
 

@@ -98,7 +98,6 @@ export async function PATCH(request, { params }) {
     .from('cases')
     .update({
       extracted_json: nextExtracted,
-      updated_by: publicUser.id,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -115,15 +114,24 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Failed to update extracted field' }, { status: 500 });
   }
 
-  await supabaseAdmin.from('audit_log').insert({
+  const { error: auditError } = await supabaseAdmin.from('audit_log').insert({
     case_id: id,
     field_name: path.join('.'),
     old_value: JSON.stringify(currentValue ?? null),
     new_value: JSON.stringify(body?.new_value ?? null),
     value_type: 'extracted_field',
-    changed_by: publicUser.id,
-    changed_by_email: publicUser.email,
+    changed_by: publicUser.email || publicUser.id,
+    changed_at: new Date().toISOString(),
   });
+
+  if (auditError) {
+    logSupabaseError('Case extracted field audit insert failed', auditError, {
+      caseId: id,
+      fieldPath: path.join('.'),
+      authUserId: user.id,
+      publicUserId: publicUser.id,
+    });
+  }
 
   return NextResponse.json(updated);
 }

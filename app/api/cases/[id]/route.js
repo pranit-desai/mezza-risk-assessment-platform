@@ -16,7 +16,7 @@ async function withDateAuditStamps(row) {
 
   const { data: auditRows, error } = await supabaseAdmin
     .from('audit_log')
-    .select('field_name, changed_by_email, created_at')
+    .select('field_name, changed_by, changed_at, created_at')
     .eq('case_id', row.id)
     .in('field_name', ['submission_date', 'verdict_date'])
     .eq('value_type', 'top_level')
@@ -31,8 +31,8 @@ async function withDateAuditStamps(row) {
   for (const auditRow of auditRows || []) {
     if (!stamps[auditRow.field_name]) {
       stamps[auditRow.field_name] = {
-        by: auditRow.changed_by_email || 'Unknown',
-        at: auditRow.created_at,
+        by: auditRow.changed_by || 'Unknown',
+        at: auditRow.changed_at || auditRow.created_at,
       };
     }
   }
