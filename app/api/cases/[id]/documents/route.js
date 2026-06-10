@@ -16,7 +16,7 @@ import {
 export const runtime = 'nodejs';
 
 const DOCUMENT_BUCKET = process.env.SUPABASE_DOCUMENT_BUCKET || 'documents';
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function requireUser() {
   const supabase = await createSupabaseServer();
