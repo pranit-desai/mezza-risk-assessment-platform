@@ -209,7 +209,8 @@ export default function DocumentsPageClient({
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', borderBottom: '1px solid var(--mz-border-soft)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', borderBottom: '1px solid var(--mz-border-soft)' }}>
+          <DocumentStat label="Missing" value={documentBuckets.missing.length} tone="red" />
           <DocumentStat label="Expired" value={documentBuckets.expired.length} tone="red" />
           <DocumentStat label="Expiring" value={documentBuckets.expiring.length} tone="amber" />
           <DocumentStat label="Pending" value={documentBuckets.pending.length} tone="amber" />
@@ -217,6 +218,7 @@ export default function DocumentsPageClient({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 0 }}>
+          <DocumentBucket title="Missing" items={documentBuckets.missing} onRequest={(item) => requestItems([item])} />
           <DocumentBucket title="Expired" items={documentBuckets.expired} onRequest={(item) => requestItems([item])} />
           <DocumentBucket title="Expiring" items={documentBuckets.expiring} onRequest={(item) => requestItems([item])} />
           <DocumentBucket

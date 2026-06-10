@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import DashboardModal from "../../_components/DashboardModal";
 import StatusBadge from "../../_components/StatusBadge";
 import {
   buildDocumentItems,
@@ -105,7 +106,7 @@ function DocumentAlertStrip({ items, error }) {
         ))}
       </div>
 
-      <Link href="/banking" className="mz-clickable" style={{ padding: "8px 12px" }}>
+      <Link href="/documents" className="mz-clickable" style={{ padding: "8px 12px" }}>
         Open Documents
       </Link>
     </div>
@@ -174,6 +175,7 @@ export default function CaseOverviewPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [documentBundle, setDocumentBundle] = useState({ documents: [], requests: [] });
   const [documentError, setDocumentError] = useState("");
+  const [dashboardUrl, setDashboardUrl] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -379,6 +381,14 @@ export default function CaseOverviewPage() {
         >
           Open Data Bank →
         </Link>
+        <button
+          type="button"
+          className="mz-clickable"
+          onClick={() => setDashboardUrl(`/api/dashboards/venue/${caseData.id}`)}
+          style={{ padding: "10px 18px", cursor: "pointer" }}
+        >
+          Open Risk Dashboard
+        </button>
       </div>
 
       <div className="mz-card">
@@ -421,6 +431,11 @@ export default function CaseOverviewPage() {
           {" "}Use the Data Bank to trigger ingestion-stage transitions.
         </div>
       </div>
+      <DashboardModal
+        title={`${caseData.venue_name || "Venue"} Risk Dashboard`}
+        url={dashboardUrl}
+        onClose={() => setDashboardUrl("")}
+      />
     </div>
   );
 }

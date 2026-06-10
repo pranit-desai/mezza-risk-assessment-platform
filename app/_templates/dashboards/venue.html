@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Epik Entertainment LLC FZ · Nad Al Shiba · Mezza Credit Risk Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,500;9..40,700;9..40,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--coral:#e8604a;--coral-d:#c94a34;--card:#161616;--card-2:#1e1e1e;--brd:rgba(255,255,255,0.09);--t1:#f2ede8;--t2:#888078;--t3:#3a3530;--bap:#00c86e;--ba:#2ecc71;--bbp:#52c8b0;--bb:#d4a800;--bcp:#e08800;--bc:#d45a00;--blo:#d43030}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#ededed;padding:28px;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 55% 45% at 0% 0%,rgba(212,48,48,.04) 0%,transparent 60%)}
+.wrap{position:relative;z-index:1;max-width:1480px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+/* CRITICAL EXPIRED BANNER */
+.expired-banner{background:rgba(212,48,48,.18);border:2px solid rgba(212,48,48,.7);border-radius:12px;padding:18px 24px;display:flex;align-items:flex-start;gap:16px}
+.expired-icon{font-size:24px;flex-shrink:0;margin-top:2px}
+.expired-text{font-size:13px;color:#ffb0b0;line-height:1.8}
+.expired-text strong{color:#ff6060;font-weight:800}
+.expired-text .hold-badge{display:inline-block;background:var(--blo);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:5px;letter-spacing:.5px;margin-left:6px}
+.header{background:var(--card);border:1.5px solid rgba(212,48,48,.3);border-radius:16px;padding:22px 30px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--blo)}
+.header-name{font-size:21px;font-weight:800;letter-spacing:-.3px;color:var(--t1)}
+.header-sub{font-size:11.5px;color:var(--t2);margin-top:3px}
+.header-meta{text-align:right;font-size:11.5px;color:var(--t2);line-height:1.9}
+.header-meta span{color:var(--t1);font-weight:600}
+.score-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sc{background:var(--card);border:1px solid var(--brd);border-radius:16px;padding:26px 30px;display:flex;align-items:center;gap:24px;position:relative;overflow:hidden}
+.sc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:16px 16px 0 0}
+.sc.fin::after{background:linear-gradient(90deg,var(--bap),transparent)}
+.sc.prof::after{background:linear-gradient(90deg,var(--bbp),transparent)}
+.gw{flex-shrink:0;width:170px;height:112px}
+.gw svg{width:100%;height:100%;display:block;overflow:visible}
+.si-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--t2);margin-bottom:11px}
+.si-row{display:flex;align-items:baseline;gap:10px}
+.si-num{font-size:52px;font-weight:900;line-height:1;letter-spacing:-2px}
+.si-num.go{color:var(--bap)} .si-num.ab{color:var(--bbp)}
+.si-outof{font-size:17px;font-weight:500;color:var(--t2);padding-bottom:5px}
+.rpill{font-family:'DM Mono',monospace;font-size:14px;font-weight:600;padding:4px 12px;border-radius:7px;border:1.5px solid}
+.rp-go{color:var(--bap);border-color:rgba(0,200,110,.4);background:rgba(0,200,110,.1)}
+.rp-ab{color:var(--bbp);border-color:rgba(82,200,176,.4);background:rgba(82,200,176,.1)}
+.si-desc{font-size:12.5px;color:var(--t2);margin-top:7px}
+.ob{border-radius:20px;padding:36px 52px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+.ob::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 65% 55% at 28% 50%,rgba(255,255,255,.07) 0%,transparent 70%);pointer-events:none}
+.ob-label{text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;opacity:.8;margin-bottom:22px}
+.ob-body{display:flex;justify-content:center;align-items:center;gap:56px}
+.ob-gauge{flex-shrink:0;width:240px;height:155px}
+.ob-gauge svg{width:100%;height:100%;display:block;overflow:visible}
+.ob-sc{text-align:center}
+.ob-num{font-size:90px;font-weight:900;line-height:1;letter-spacing:-5px;color:#fff}
+.ob-outof{font-size:17px;font-weight:500;color:rgba(255,255,255,.55);margin-top:1px;font-family:'DM Mono',monospace}
+.ob-pills{display:flex;justify-content:center;gap:10px;margin-top:12px}
+.ob-risk{font-size:13px;font-weight:700;padding:7px 18px;border-radius:100px;background:rgba(255,255,255,.2);color:#fff;letter-spacing:.5px}
+.ob-bd{text-align:left;font-size:14px;line-height:2.1;color:rgba(255,255,255,.8)}
+.ob-bd strong{color:#fff;font-weight:700}
+.ob-formula{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.25);font-family:'DM Mono',monospace;font-size:12px;color:rgba(255,255,255,.6)}
+.mg{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+.mc{background:var(--card);border:1px solid var(--brd);border-radius:13px;padding:18px 20px 16px;position:relative;overflow:hidden;transition:transform .18s}
+.mc:hover{transform:translateY(-2px)}
+.mc::before{content:'';position:absolute;left:0;top:13px;bottom:13px;width:3px;border-radius:0 3px 3px 0}
+.mc.m-ex::before{background:var(--bap)} .mc.m-go::before{background:var(--ba)} .mc.m-ab::before{background:var(--bbp)}
+.mc.m-av::before{background:var(--bb)} .mc.m-bd::before{background:var(--blo)}
+.ml{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--t2);margin-bottom:7px}
+.mv{font-size:23px;font-weight:800;color:var(--t1);letter-spacing:-.4px;margin-bottom:9px}
+.ms{display:flex;gap:3.5px;margin-bottom:7px}
+.md{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.08)}
+.mbp{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;padding:3px 8px;border-radius:5px}
+.bp-ex{background:rgba(0,200,110,.13);color:var(--bap)} .bp-go{background:rgba(46,204,113,.13);color:var(--ba)}
+.bp-ab{background:rgba(82,200,176,.13);color:var(--bbp)} .bp-av{background:rgba(212,168,0,.13);color:var(--bb)}
+.bp-bd{background:rgba(212,48,48,.13);color:var(--blo)}
+.cb{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:22px 26px}
+.st{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--t2);margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.st::before{content:'';width:14px;height:2px;background:var(--coral);border-radius:1px;flex-shrink:0}
+.chart-meta{display:flex;flex-wrap:wrap;gap:0 32px;margin-bottom:18px}
+.cm{display:flex;flex-direction:column;gap:3px}
+.cm-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--t2)}
+.cm-val{font-size:20px;font-weight:800;color:var(--t1);letter-spacing:-.4px}
+.cm-val.hi{color:var(--bbp)} .cm-val.lo{color:var(--bcp)} .cm-val.pos{color:var(--bap)}
+.chart-wrap{position:relative;width:100%;height:200px}
+.chart-wrap svg{width:100%;height:100%;display:block}
+.locs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.li{background:var(--card-2);border:1px solid var(--brd);border-radius:10px;padding:14px 17px;border-left:3px solid #3a8fd4}
+.ln{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:3px}
+.lsz{font-size:12px;color:var(--t2);font-family:'DM Mono',monospace}
+.li-dim{border-left-color:rgba(255,255,255,.08)!important}
+.li-dim .ln{color:rgba(255,255,255,.15)} .li-dim .lsz{color:rgba(255,255,255,.08)}
+.tg{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.tier{border-radius:11px;padding:21px 24px;border:1px solid;opacity:.5}
+.tier.con{background:rgba(0,200,110,.07);border-color:rgba(0,200,110,.22)}
+.tier.mod{background:rgba(212,168,0,.07);border-color:rgba(212,168,0,.22)}
+.tier.agg{background:rgba(212,48,48,.07);border-color:rgba(212,48,48,.25)}
+.tl-h{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--t2);margin-bottom:8px}
+.ta{font-size:28px;font-weight:800;letter-spacing:-1.2px}
+.tier.con .ta{color:var(--bap)} .tier.mod .ta{color:var(--bb)} .tier.agg .ta{color:var(--blo)}
+.tp{font-size:11px;color:var(--t2);margin-top:4px;font-family:'DM Mono',monospace}
+.tier-desc{font-size:11px;color:var(--t2);margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07);line-height:1.7}
+.br{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sr{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.sr:last-child{border-bottom:none}
+.sn{font-size:12px;color:var(--t2);width:148px;flex-shrink:0;font-weight:500}
+.sb{flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.sf{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--coral-d),var(--coral))}
+.sp{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--t1);width:38px;text-align:right}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.fb{border-radius:11px;border:1px solid;padding:22px 20px}
+.fb.grn{background:rgba(0,200,110,.07);border-color:rgba(0,200,110,.22)}
+.fb.red{background:rgba(212,48,48,.07);border-color:rgba(212,48,48,.25)}
+.fi{font-size:22px;margin-bottom:6px}
+.flab{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--t2);margin-bottom:5px}
+.fn{font-size:52px;font-weight:900;line-height:1;letter-spacing:-3px;margin-bottom:4px}
+.fb.grn .fn{color:var(--bap)} .fb.red .fn{color:var(--blo)}
+.ftot{font-size:11px;color:var(--t3);font-family:'DM Mono',monospace}
+.flag-reason{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);font-size:11.5px;color:var(--t2);line-height:1.7}
+.flag-item{padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.flag-item:last-child{border-bottom:none}
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.si2{background:var(--card-2);border:1px solid var(--brd);border-radius:10px;padding:13px 17px}
+.sl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t2);margin-bottom:7px}
+.sv{font-size:14px;font-weight:600;color:var(--t1)}
+.loyalty-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.loy-box{background:var(--card-2);border:1px solid var(--brd);border-radius:11px;padding:18px 22px}
+.loy-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.loy-row:last-child{border-bottom:none}
+.loy-q{font-size:12px;color:var(--t2);line-height:1.5;flex:1}
+.loy-pill{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;border:1.5px solid;white-space:nowrap;flex-shrink:0;margin-top:2px}
+.loy-no{color:var(--blo);border-color:rgba(212,48,48,.35);background:rgba(212,48,48,.1)}
+.loy-na{color:var(--t2);border-color:rgba(255,255,255,.15);background:rgba(255,255,255,.04)}
+.red-table{width:100%;border-collapse:collapse}
+.red-table thead th{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--t2);padding:7px 10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.08)}
+.red-table thead th:first-child{text-align:left}
+.red-table tbody tr{border-bottom:1px solid rgba(255,255,255,.04)}
+.red-table tbody tr:last-child{border-bottom:none}
+.red-table tbody tr td{padding:9px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11.5px;color:rgba(255,255,255,.7)}
+.red-table tbody tr td:first-child{text-align:left;font-weight:800;font-size:13px}
+.red-table tbody tr td:nth-child(3){color:#e8e0d4;font-weight:600}
+.red-table tbody tr:nth-child(1) td:first-child{color:var(--bap)}
+.red-table tbody tr:nth-child(2) td:first-child{color:#9fd870}
+.red-table tbody tr:nth-child(3) td:first-child{color:var(--bb)}
+.red-table tbody tr:nth-child(4) td:first-child{color:var(--bcp)}
+.red-table tbody tr:nth-child(5) td:first-child{color:var(--blo)}
+.kch{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:20px 26px}
+.kch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kch-card{background:var(--card-2);border:1px solid var(--brd);border-radius:10px;padding:14px 18px}
+.kch-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t2);margin-bottom:8px}
+.kch-value{font-size:22px;font-weight:800;letter-spacing:-.4px}
+.kch-sub{font-size:11px;margin-top:4px;line-height:1.5}
+.kch-green .kch-value{color:var(--bap)} .kch-green .kch-sub{color:rgba(0,200,110,.6)}
+.kch-red   .kch-value{color:var(--blo)} .kch-red   .kch-sub{color:rgba(212,48,48,.7)}
+.kch-na    .kch-value{color:var(--t2)}  .kch-na    .kch-sub{color:var(--t3)}
+.kch-warn{margin-top:12px;background:rgba(212,48,48,.12);border:2px solid rgba(212,48,48,.5);border-radius:8px;padding:14px 18px;font-size:12px;color:#ffb0b0;line-height:1.8}
+.kch-warn strong{color:#ff6060}
+.kch-warn-amber{margin-top:8px;background:rgba(212,168,0,.08);border:1px solid rgba(212,168,0,.25);border-radius:8px;padding:12px 16px;font-size:12px;color:#e0c060;line-height:1.7}
+.kch-warn-amber strong{color:var(--bb)}
+.kch-warn-green{margin-top:8px;background:rgba(0,200,110,.06);border:1px solid rgba(0,200,110,.2);border-radius:8px;padding:12px 16px;font-size:12px;color:#80e0a0;line-height:1.7}
+.kch-warn-green strong{color:var(--bap)}
+.sw-panel{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:22px 26px}
+.sw-badge{display:inline-flex;align-items:center;gap:7px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#7986cb;background:rgba(92,107,192,.12);border:1px solid rgba(92,107,192,.25);border-radius:6px;padding:4px 10px}
+.sw-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:13px;margin:16px 0}
+.sw-card{background:var(--card-2);border:1px solid var(--brd);border-radius:10px;padding:14px 16px}
+.sw-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t2);margin-bottom:6px}
+.sw-val{font-size:22px;font-weight:800;color:var(--t1);letter-spacing:-.4px;margin-bottom:4px}
+.sw-sub{font-size:10.5px;color:var(--t2);line-height:1.4}
+.sw-trow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.sw-trow:last-child{border-bottom:none}
+.sw-tn{font-size:11.5px;color:var(--t2);width:160px;flex-shrink:0}
+.sw-tb{flex:1;height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.sw-tf{height:100%;border-radius:3px}
+.sw-tp{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--t1);width:40px;text-align:right}
+.sw-highlight{background:rgba(92,107,192,.08);border:1px solid rgba(92,107,192,.2);border-radius:9px;padding:14px 18px;margin-top:14px;font-size:12px;color:#9fa8da;line-height:1.7}
+.sw-highlight strong{color:#7986cb}
+.sww{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:22px 26px}
+.sww-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.sww-box{background:var(--card-2);border-radius:11px;padding:18px 22px}
+.sww-box.str{border:1px solid rgba(0,200,110,.2)} .sww-box.wkn{border:1px solid rgba(212,48,48,.2)}
+.sww-head{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.3px;margin-bottom:14px}
+.sww-box.str .sww-head{color:var(--bap)} .sww-box.wkn .sww-head{color:var(--blo)}
+.sww-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;line-height:1.6;color:#b8b0a8}
+.sww-item:last-child{border-bottom:none}
+.sww-item strong{font-weight:700}
+.sww-box.str .sww-item strong{color:#7de0a8} .sww-box.wkn .sww-item strong{color:#e09080}
+.sww-dot{flex-shrink:0;margin-top:3px;font-size:10px}
+@keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.wrap>*{animation:fu .45s ease both}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- MAXIMUM SEVERITY EXPIRED BANNER -->
+<div class="expired-banner">
+  <div class="expired-icon">🚫</div>
+  <div class="expired-text">
+    <strong>HARD LENDING HOLD — Trade License EXPIRED 18 Mar 2026 (23 days ago).</strong><span class="hold-badge">NO DISBURSEMENT</span><br>
+    Lending is suspended under all tiers until a valid renewed Trade License is presented to the Mezza credit team. Additionally, the venue profile indicates a <strong>temporary closure</strong> — current operational status must be independently confirmed before this hold can be lifted. Score and metrics below reflect the LTM period during which the business was operating normally.
+  </div>
+</div>
+
+<div class="header">
+  <div>
+    <div class="header-name">Epik Entertainment LLC FZ</div>
+    <div class="header-sub">Nad Al Shiba, Dubai &nbsp;·&nbsp; Sunset Hospitality Holdings Limited &nbsp;·&nbsp; Mezza Credit Risk Assessment</div>
+  </div>
+  <div class="header-meta">Analysis Date: <span>10 Apr 2026</span><br>Analyst: <span>Pranit</span> &nbsp;·&nbsp; Checked By: <span>Pranit</span></div>
+</div>
+
+<!-- SCORE ROW
+     Financial 86.3 → angle=π(1-0.863)=24.48° → x=100+84×cos(24.48°)=176.4, y=108-84×sin(24.48°)=73.2
+     Profile   71.0 → angle=π(1-0.710)=54.18° → x=100+84×cos(54.18°)=149.2, y=108-84×sin(54.18°)=39.8 -->
+<div class="score-row">
+  <div class="sc fin">
+    <div class="gw">
+      <svg viewBox="0 0 200 120" fill="none">
+        <path d="M16 108   A84 84 0 0 1 24.3 71.6"   stroke="#d43030" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M24.3 71.6 A84 84 0 0 1 47.6 42.3"  stroke="#d45a00" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M47.6 42.3 A84 84 0 0 1 81.3 26.1"  stroke="#e08800" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M81.3 26.1 A84 84 0 0 1 118.7 26.1" stroke="#d4a800" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M118.7 26.1 A84 84 0 0 1 152.4 42.3" stroke="#52c8b0" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M152.4 42.3 A84 84 0 0 1 175.7 71.6" stroke="#2ecc71" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M175.7 71.6 A84 84 0 0 1 184 108"   stroke="#00c86e" stroke-width="15" stroke-linecap="round"/>
+        <line x1="100" y1="108" x2="176.4" y2="73.2" stroke="#f2ede8" stroke-width="2.8" stroke-linecap="round"/>
+        <circle cx="100" cy="108" r="6.5" fill="#f2ede8"/>
+        <circle cx="100" cy="108" r="3"   fill="#161616"/>
+      </svg>
+    </div>
+    <div>
+      <div class="si-lbl">Financial Health · 70% Weight</div>
+      <div class="si-row">
+        <div class="si-num go">86.3</div>
+        <div class="si-outof">/100</div>
+        <div class="rpill rp-go">Low Risk</div>
+      </div>
+      <div class="si-desc">Low Risk · Grade A</div>
+    </div>
+  </div>
+  <div class="sc prof">
+    <div class="gw">
+      <svg viewBox="0 0 200 120" fill="none">
+        <path d="M16 108   A84 84 0 0 1 24.3 71.6"   stroke="#d43030" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M24.3 71.6 A84 84 0 0 1 47.6 42.3"  stroke="#d45a00" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M47.6 42.3 A84 84 0 0 1 81.3 26.1"  stroke="#e08800" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M81.3 26.1 A84 84 0 0 1 118.7 26.1" stroke="#d4a800" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M118.7 26.1 A84 84 0 0 1 152.4 42.3" stroke="#52c8b0" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M152.4 42.3 A84 84 0 0 1 175.7 71.6" stroke="#2ecc71" stroke-width="15" stroke-linecap="butt"/>
+        <path d="M175.7 71.6 A84 84 0 0 1 184 108"   stroke="#00c86e" stroke-width="15" stroke-linecap="round"/>
+        <line x1="100" y1="108" x2="149.2" y2="39.8" stroke="#f2ede8" stroke-width="2.8" stroke-linecap="round"/>
+        <circle cx="100" cy="108" r="6.5" fill="#f2ede8"/>
+        <circle cx="100" cy="108" r="3"   fill="#161616"/>
+      </svg>
+    </div>
+    <div>
+      <div class="si-lbl">Restaurant Profile · 30% Weight</div>
+      <div class="si-row">
+        <div class="si-num ab">71.0</div>
+        <div class="si-outof">/100</div>
+        <div class="rpill rp-ab">Low Risk</div>
+      </div>
+      <div class="si-desc">Low Risk · Grade A</div>
+    </div>
+  </div>
+</div>
+
+<!-- OVERALL — 81.7
+     angle=π(1-0.817)=33.12° → x=140+108×cos(33.12°)=230.5, y=150-108×sin(33.12°)=91.1 -->
+<div class="ob" id="ob">
+  <div class="ob-label">Overall Composite Risk Score · Mezza Weighted Model · ⚠ Hard Hold — Expired Trade License</div>
+  <div class="ob-body">
+    <div class="ob-gauge">
+      <svg viewBox="0 0 280 160" fill="none">
+        <path d="M32 150   A108 108 0 0 1 44.6 101.2"   stroke="rgba(255,255,255,.12)" stroke-width="19" stroke-linecap="butt"/>
+        <path d="M44.6 101.2 A108 108 0 0 1 72.7 65.6"  stroke="rgba(255,255,255,.22)" stroke-width="19" stroke-linecap="butt"/>
+        <path d="M72.7 65.6  A108 108 0 0 1 116 44.7"   stroke="rgba(255,255,255,.34)" stroke-width="19" stroke-linecap="butt"/>
+        <path d="M116 44.7   A108 108 0 0 1 164 44.7"   stroke="rgba(255,255,255,.48)" stroke-width="19" stroke-linecap="butt"/>
+        <path d="M164 44.7   A108 108 0 0 1 207.3 65.6"  stroke="rgba(255,255,255,.64)" stroke-width="19" stroke-linecap="butt"/>
+        <path d="M207.3 65.6 A108 108 0 0 1 235.4 101.2" stroke="rgba(255,255,255,.80)" stroke-width="19" stroke-linecap="butt"/>
+        <path d="M235.4 101.2 A108 108 0 0 1 248 150"   stroke="rgba(255,255,255,.96)" stroke-width="19" stroke-linecap="round"/>
+        <line x1="140" y1="150" x2="230.5" y2="91.1" stroke="white" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="140" cy="150" r="9" fill="white"/>
+        <circle cx="140" cy="150" r="4" fill="rgba(0,0,0,.25)"/>
+      </svg>
+    </div>
+    <div class="ob-sc">
+      <div class="ob-num">81.7</div>
+      <div class="ob-outof">/ 100</div>
+      <div class="ob-pills">
+        <div class="ob-risk">LOW RISK ◈</div>
+        <div class="ob-risk">A</div>
+      </div>
+    </div>
+    <div class="ob-bd">
+      <div>Financial: <strong>86.3</strong> &nbsp;(70%)</div>
+      <div>Profile:&nbsp;&nbsp;&nbsp;<strong>71.0</strong> &nbsp;(30%)</div>
+      <div class="ob-formula">= (86.3 × 0.7) + (71.0 × 0.3) = 81.7 &nbsp;|&nbsp; ⚠ HOLD</div>
+    </div>
+  </div>
+</div>
+
+<!-- METRIC CARDS ROW 1 -->
+<div class="mg">
+  <div class="mc m-ex">
+    <div class="ml">Avg Spend Per Transaction</div>
+    <div class="mv">AED 1,321</div>
+    <div class="ms"><div class="md" style="background:#d43030"></div><div class="md" style="background:#d45a00"></div><div class="md" style="background:#e08800"></div><div class="md" style="background:#d4a800"></div><div class="md" style="background:#52c8b0"></div><div class="md" style="background:#2ecc71"></div><div class="md" style="background:#00c86e"></div></div>
+    <div class="mbp bp-ex">● Excellent · 2nd Highest in Portfolio</div>
+  </div>
+  <div class="mc m-ex">
+    <div class="ml">LTM Revenue (Net VAT)</div>
+    <div class="mv">AED 56,691,936</div>
+    <div class="ms"><div class="md" style="background:#d43030"></div><div class="md" style="background:#d45a00"></div><div class="md" style="background:#e08800"></div><div class="md" style="background:#d4a800"></div><div class="md" style="background:#52c8b0"></div><div class="md" style="background:#2ecc71"></div><div class="md" style="background:#00c86e"></div></div>
+    <div class="mbp bp-ex">● Excellent+</div>
+  </div>
+  <div class="mc m-ab">
+    <div class="ml">Years of Operation</div>
+    <div class="mv">2.0 Years</div>
+    <div class="ms"><div class="md" style="background:#d43030"></div><div class="md" style="background:#d45a00"></div><div class="md" style="background:#e08800"></div><div class="md" style="background:#d4a800"></div><div class="md"></div><div class="md"></div><div class="md"></div></div>
+    <div class="mbp bp-ab">● Above Average</div>
+  </div>
+  <div class="mc m-ex">
+    <div class="ml">Rent / Revenue</div>
+    <div class="mv">5.45%</div>
+    <div class="ms"><div class="md" style="background:#d43030"></div><div class="md" style="background:#d45a00"></div><div class="md" style="background:#e08800"></div><div class="md" style="background:#d4a800"></div><div class="md" style="background:#52c8b0"></div><div class="md" style="background:#2ecc71"></div><div class="md" style="background:#00c86e"></div></div>
+    <div class="mbp bp-ex">● Excellent</div>
+  </div>
+</div>
+
+<!-- METRIC CARDS ROW 2 -->
+<div class="mg">
+  <div class="mc m-ex">
+    <div class="ml">Salary / Revenue</div>
+    <div class="mv">27.00%</div>
+    <div class="ms"><div class="md" style="background:#d43030"></div><div class="md" style="background:#d45a00"></div><div class="md" style="background:#e08800"></div><div class="md" style="background:#d4a800"></div><div class="md" style="background:#52c8b0"></div><div class="md" style="background:#2ecc71"></div><div class="md" style="background:#00c86e"></div></div>
+    <div class="mbp bp-ex">● Excellent</div>
+  </div>
+  <div class="mc m-ex">
+    <div class="ml">Debt to Revenue Ratio</div>
+    <div class="mv">0.00%</div>
+    <div class="ms"><div class="md" style="background:#d43030"></div><div class="md" style="background:#d45a00"></div><div class="md" style="background:#e08800"></div><div class="md" style="background:#d4a800"></div><div class="md" style="background:#52c8b0"></div><div class="md" style="background:#2ecc71"></div><div class="md" style="background:#00c86e"></div></div>
+    <div class="mbp bp-ex">● Excellent</div>
+  </div>
+  <div class="mc m-ex">
+    <div class="ml">Pre-Mezza DBR</div>
+    <div class="mv">0.0%</div>
+    <div class="ms"><div class="md" style="background:#d43030"></div><div class="md" style="background:#d45a00"></div><div class="md" style="background:#e08800"></div><div class="md" style="background:#d4a800"></div><div class="md" style="background:#52c8b0"></div><div class="md" style="background:#2ecc71"></div><div class="md" style="background:#00c86e"></div></div>
+    <div class="mbp bp-ex">● Excellent · No Loans</div>
+  </div>
+  <div class="mc m-go">
+    <div class="ml">Revenue Growth H1/H2</div>
+    <div class="mv">+18.4%</div>
+    <div class="ms"><div class="md" style="background:#d43030"></div><div class="md" style="background:#d45a00"></div><div class="md" style="background:#e08800"></div><div class="md" style="background:#d4a800"></div><div class="md" style="background:#52c8b0"></div><div class="md" style="background:#2ecc71"></div><div class="md"></div></div>
+    <div class="mbp bp-go">● Positive H2 Acceleration</div>
+  </div>
+</div>
+
+<!-- LTM CHART Jan-25 to Dec-25
+     Deep trough Feb-May, sharp recovery Jun-Dec, peak Dec ~6M
+     Y-scale: 7M=20, 0=165 → 145px/7M → 20.7px/1M
+     Jan(73):5.8→45  Feb(116):2.0→124  Mar(159):1.0→144  Apr(202):0.47→155  May(245):1.5→134
+     Jun(288):4.0→82  Jul(331):4.5→72  Aug(374):4.5→72  Sep(417):4.5→72  Oct(460):5.0→62  Nov(503):5.5→51  Dec(546):6.1→39 -->
+<div class="cb">
+  <div class="st">12-Month LTM Revenue Trend</div>
+  <div class="chart-meta">
+    <div class="cm"><div class="cm-lbl">LTM Revenue</div><div class="cm-val">AED 56,691,936</div></div>
+    <div class="cm"><div class="cm-lbl">Monthly Avg</div><div class="cm-val hi">AED 4,724,328</div></div>
+    <div class="cm"><div class="cm-lbl">Peak Month</div><div class="cm-val hi">Dec-25 · AED 6,077,543</div></div>
+    <div class="cm"><div class="cm-lbl">Trough Month</div><div class="cm-val lo">Apr-25 · AED 472,698</div></div>
+    <div class="cm"><div class="cm-lbl">H1 / H2 Growth</div><div class="cm-val pos">+18.4%</div></div>
+    <div class="cm" style="justify-content:flex-end;margin-left:auto"><div style="font-size:9px;color:var(--t3);display:flex;align-items:center;gap:5px;margin-top:auto"><span style="display:inline-block;width:20px;height:7px;background:rgba(82,200,176,.16);border-radius:2px;border:1px solid rgba(82,200,176,.3)"></span>±15% band</div></div>
+  </div>
+  <div class="chart-wrap">
+    <svg viewBox="0 0 620 180" preserveAspectRatio="xMidYMid meet" fill="none">
+      <defs>
+        <linearGradient id="bandG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#52c8b0" stop-opacity="0.10"/><stop offset="100%" stop-color="#52c8b0" stop-opacity="0.01"/></linearGradient>
+        <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d4a800" stop-opacity="0.18"/><stop offset="100%" stop-color="#d4a800" stop-opacity="0.01"/></linearGradient>
+      </defs>
+      <line x1="60" y1="67" x2="560" y2="67" stroke="rgba(82,200,176,.25)" stroke-width="1" stroke-dasharray="4 3"/>
+      <rect x="60" y="55" width="500" height="24" fill="url(#bandG)"/>
+      <path d="M73,45 116,124 159,144 202,155 245,134 288,82 331,72 374,72 417,72 460,62 503,51 546,39 546,165 73,165 Z" fill="url(#areaFill)"/>
+      <polyline points="73,45 116,124 159,144 202,155 245,134 288,82 331,72 374,72 417,72 460,62 503,51 546,39"
+        stroke="#d4a800" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="73"  cy="45"  r="3.5" fill="#d4a800"/>
+      <circle cx="116" cy="124" r="3.5" fill="#d4a800"/>
+      <circle cx="159" cy="144" r="3.5" fill="#d4a800"/>
+      <circle cx="202" cy="155" r="4.5" fill="#d43030"/>
+      <circle cx="245" cy="134" r="3.5" fill="#d4a800"/>
+      <circle cx="288" cy="82"  r="3.5" fill="#d4a800"/>
+      <circle cx="331" cy="72"  r="3.5" fill="#d4a800"/>
+      <circle cx="374" cy="72"  r="3.5" fill="#d4a800"/>
+      <circle cx="417" cy="72"  r="3.5" fill="#d4a800"/>
+      <circle cx="460" cy="62"  r="3.5" fill="#d4a800"/>
+      <circle cx="503" cy="51"  r="3.5" fill="#d4a800"/>
+      <circle cx="546" cy="39"  r="4.5" fill="#00c86e"/>
+      <text x="73"  y="175" text-anchor="middle" font-size="8" fill="#888078">Jan-25</text>
+      <text x="116" y="175" text-anchor="middle" font-size="8" fill="#888078">Feb-25</text>
+      <text x="159" y="175" text-anchor="middle" font-size="8" fill="#888078">Mar-25</text>
+      <text x="202" y="175" text-anchor="middle" font-size="8" fill="#888078">Apr-25</text>
+      <text x="245" y="175" text-anchor="middle" font-size="8" fill="#888078">May-25</text>
+      <text x="288" y="175" text-anchor="middle" font-size="8" fill="#888078">Jun-25</text>
+      <text x="331" y="175" text-anchor="middle" font-size="8" fill="#888078">Jul-25</text>
+      <text x="374" y="175" text-anchor="middle" font-size="8" fill="#888078">Aug-25</text>
+      <text x="417" y="175" text-anchor="middle" font-size="8" fill="#888078">Sep-25</text>
+      <text x="460" y="175" text-anchor="middle" font-size="8" fill="#888078">Oct-25</text>
+      <text x="503" y="175" text-anchor="middle" font-size="8" fill="#888078">Nov-25</text>
+      <text x="546" y="175" text-anchor="middle" font-size="8" fill="#888078">Dec-25</text>
+      <text x="562" y="70" font-size="8" fill="rgba(82,200,176,.6)">avg</text>
+    </svg>
+  </div>
+</div>
+
+<!-- SIMILARWEB -->
+<div class="sw-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div class="st" style="margin-bottom:0">Digital Traction &amp; Web Analytics · SimilarWeb Intelligence</div>
+    <div class="sw-badge">📊 SimilarWeb · Traction Indicator</div>
+  </div>
+  <div class="sw-grid">
+    <div class="sw-card">
+      <div class="sw-lbl">Monthly Website Visits</div>
+      <div class="sw-val" style="color:var(--bb)">1,757</div>
+      <div class="sw-sub">Low volume — small digital footprint for an entertainment venue of this revenue scale</div>
+    </div>
+    <div class="sw-card">
+      <div class="sw-lbl">Direct Traffic %</div>
+      <div class="sw-val" style="color:var(--bap)">100.00%</div>
+      <div class="sw-sub">All traffic is direct — no organic or paid search. Pure brand navigation. Highly unusual profile.</div>
+    </div>
+    <div class="sw-card">
+      <div class="sw-lbl">Organic Search %</div>
+      <div class="sw-val" style="color:var(--t2)">0.00%</div>
+      <div class="sw-sub">Zero organic search — venue is not discoverable via SEO at all</div>
+    </div>
+    <div class="sw-card">
+      <div class="sw-lbl">Paid Search %</div>
+      <div class="sw-val" style="color:var(--bap)">0.00%</div>
+      <div class="sw-sub">Zero paid search — no SEM spend</div>
+    </div>
+    <div class="sw-card">
+      <div class="sw-lbl">UAE / GCC / Tourist Mix</div>
+      <div class="sw-val" style="color:var(--bap)">96.55%</div>
+      <div class="sw-sub">Highest UAE/GCC audience share in the portfolio — near-pure domestic addressable audience</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div>
+      <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--t2);margin-bottom:12px">Traffic Source Breakdown</div>
+      <div class="sw-trow"><div class="sw-tn">Direct Traffic</div><div class="sw-tb"><div class="sw-tf" style="width:100%;background:linear-gradient(90deg,#3949ab,#5c6bc0)"></div></div><div class="sw-tp">100%</div></div>
+      <div class="sw-trow"><div class="sw-tn">Organic Search</div><div class="sw-tb"><div class="sw-tf" style="width:0%"></div></div><div class="sw-tp" style="color:var(--t2)">0%</div></div>
+      <div class="sw-trow"><div class="sw-tn">Paid Search</div><div class="sw-tb"><div class="sw-tf" style="width:0%"></div></div><div class="sw-tp" style="color:var(--t2)">0%</div></div>
+    </div>
+    <div>
+      <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--t2);margin-bottom:12px">Engagement Metrics</div>
+      <div class="sw-trow"><div class="sw-tn">Avg Visit Duration</div><div class="sw-tb"><div class="sw-tf" style="width:56%;background:linear-gradient(90deg,#00875a,#00c86e)"></div></div><div class="sw-tp" style="color:var(--bap)">56s</div></div>
+      <div class="sw-trow"><div class="sw-tn">Pages Per Visit</div><div class="sw-tb"><div class="sw-tf" style="width:65%;background:linear-gradient(90deg,#00875a,#00c86e)"></div></div><div class="sw-tp" style="color:var(--bap)">3.23</div></div>
+      <div class="sw-trow"><div class="sw-tn">UAE/GCC/Tourist %</div><div class="sw-tb"><div class="sw-tf" style="width:96.6%;background:linear-gradient(90deg,#3949ab,#5c6bc0)"></div></div><div class="sw-tp">96.6%</div></div>
+    </div>
+  </div>
+  <div class="sw-highlight">
+    <strong>⚡ Mezza Pop-Up Signal (post-reopen):</strong> Epik's digital profile is highly unusual — <strong>100% direct traffic</strong> with zero organic or paid search means the business is invisible to new discovery but intensely known to its existing audience. The 96.55% UAE/GCC audience is the highest domestic share in the entire portfolio, and 56s session / 3.23 pages indicates genuine content engagement. <strong>However, the temporary closure and expired Trade License mean this analysis is prospective only.</strong> Once the venue reopens and the license is renewed, a Mezza pop-up on the reservations/booking page would reach a uniquely high-quality, entirely domestic, high-spending captive audience — one of the best in-venue POS credit profiles on the platform.
+  </div>
+</div>
+
+<!-- LOCATIONS -->
+<div class="cb">
+  <div class="st">Venue Locations</div>
+  <div class="locs-grid">
+    <div class="li" style="border-left-color:var(--blo)"><div class="ln">Nad Al Shiba, Dubai &nbsp;<span style="font-size:10px;color:var(--blo);font-weight:700">⚠ TEMP CLOSED</span></div><div class="lsz">617 m² · Primary Venue</div></div>
+    <div class="li li-dim"><div class="ln">N/A</div><div class="lsz">—</div></div>
+    <div class="li li-dim"><div class="ln">N/A</div><div class="lsz">—</div></div>
+  </div>
+</div>
+
+<!-- LENDING TIERS — SUSPENDED -->
+<div class="cb">
+  <div class="st">Mezza Lending Capacity · Tier Recommendations</div>
+  <div style="background:rgba(212,48,48,.08);border:1.5px solid rgba(212,48,48,.3);border-radius:10px;padding:16px 20px;margin-bottom:14px;font-size:12.5px;color:#f0a0a0;line-height:1.7">
+    <strong style="color:var(--blo)">🚫 ALL TIERS SUSPENDED — Hard Lending Hold Active.</strong> Tiers shown below are indicative only and calculated on LTM revenue from the period the business was operating. No advance under any tier may be disbursed until: (1) a valid renewed Trade License is presented, and (2) the venue confirms it has fully reopened and is actively trading.
+  </div>
+  <div class="tg">
+    <div class="tier con">
+      <div class="tl-h">Conservative (Suspended)</div>
+      <div class="ta">AED 566,919</div>
+      <div class="tp">1% of AED 56,691,936 LTM Revenue</div>
+      <div class="tier-desc">Indicative only. Once license is renewed and venue is confirmed operating, this is a comfortable entry tier given AED 1,321 AOV, zero debt and 5.45% rent.</div>
+    </div>
+    <div class="tier mod">
+      <div class="tl-h">Moderate (Suspended)</div>
+      <div class="ta">AED 1,700,758</div>
+      <div class="tp">3% of AED 56,691,936 LTM Revenue</div>
+      <div class="tier-desc">Indicative only. Revenue scale supports this tier during operating periods. The extreme H1 trough (Apr AED 473K) reflects seasonal/closure dynamics — confirm stable trading before advancing.</div>
+    </div>
+    <div class="tier agg">
+      <div class="tl-h">Aggressive (Not Recommended)</div>
+      <div class="ta">AED 2,834,597</div>
+      <div class="tp">5% of AED 56,691,936 LTM Revenue</div>
+      <div class="tier-desc">Not recommended even post-renewal. The temporary closure and short 2.0-year operating history introduce structural uncertainty. Revisit after 6 months of confirmed stable post-reopen trading.</div>
+    </div>
+  </div>
+</div>
+
+<!-- REVENUE STREAMS + FLAGS -->
+<div class="br">
+  <div class="cb">
+    <div class="st">Revenue Streams · LTM Average %</div>
+    <div class="sr"><div class="sn">Card Revenue</div><div class="sb"><div class="sf" style="width:96%"></div></div><div class="sp">96%</div></div>
+    <div class="sr"><div class="sn">Cash Revenue</div><div class="sb"><div class="sf" style="width:4%"></div></div><div class="sp">4%</div></div>
+    <div class="sr"><div class="sn">Delivery Revenue</div><div class="sb"><div class="sf" style="width:1%"></div></div><div class="sp">1%</div></div>
+    <div class="sr"><div class="sn">Online Revenue</div><div class="sb"><div class="sf" style="width:0%"></div></div><div class="sp">0%</div></div>
+    <div class="sr"><div class="sn">B2B Revenue</div><div class="sb"><div class="sf" style="width:0%"></div></div><div class="sp">0%</div></div>
+    <div class="sr"><div class="sn">Dining Flow</div><div class="sb"><div class="sf" style="width:0%"></div></div><div class="sp">0%</div></div>
+    <div class="sr"><div class="sn">Cheque / Deposits</div><div class="sb"><div class="sf" style="width:0%"></div></div><div class="sp">0%</div></div>
+    <div class="sr"><div class="sn">Transfers / Walk-Ins</div><div class="sb"><div class="sf" style="width:0%"></div></div><div class="sp">0%</div></div>
+  </div>
+  <div class="cb">
+    <div class="st">Decision Flags</div>
+    <div class="fg">
+      <div class="fb grn">
+        <div class="fi">🟢</div>
+        <div class="flab">Green Flags</div>
+        <div class="fn">5</div>
+        <div class="ftot">of 13 criteria</div>
+        <div class="flag-reason">
+          <div class="flag-item"><strong>Zero Debt</strong> — No existing obligations. Clean DBR baseline.</div>
+          <div class="flag-item"><strong>96% Card Revenue</strong> — Near-complete POS traceability when operating. Second only to Sunset JI Gym (91% card) in electronic verifiability.</div>
+          <div class="flag-item"><strong>AED 1,321 Avg Spend</strong> — Second highest AOV in the portfolio (after Signor Sassi at AED 1,230). Premium entertainment guest profile.</div>
+          <div class="flag-item"><strong>Rent / Revenue 5.45%</strong> — Excellent cost efficiency for a Nad Al Shiba entertainment venue.</div>
+          <div class="flag-item"><strong>96.55% UAE/GCC Audience</strong> — Highest domestic web audience in the assessed portfolio — near-pure Mezza-addressable demographic.</div>
+        </div>
+      </div>
+      <div class="fb red">
+        <div class="fi">🔴</div>
+        <div class="flab">Red Flags</div>
+        <div class="fn">3</div>
+        <div class="ftot">of 12 criteria</div>
+        <div class="flag-reason">
+          <div class="flag-item"><strong>Trade License EXPIRED 18 Mar 2026</strong> — License has been expired for 23 days as of analysis date. Hard lending hold. No disbursement permitted.</div>
+          <div class="flag-item"><strong>Venue Temporarily Closed</strong> — Profile indicates temporary closure. Current operational status is unknown and must be independently verified. Revenue data reflects prior operating period only.</div>
+          <div class="flag-item"><strong>Extreme H1 Trough (AED 473K)</strong> — Apr-25 revenue was only 10% of monthly average. Even if seasonal, this level of volatility introduces structural repayment risk at moderate and aggressive tiers.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOYALTY -->
+<div class="cb">
+  <div class="st">Active Loyalty &amp; Subscription Programme</div>
+  <div class="loyalty-grid">
+    <div class="loy-box">
+      <div class="loy-row"><div class="loy-q">Does the restaurant have any active loyalty or subscription programme?</div><div class="loy-pill loy-no">NO</div></div>
+      <div class="loy-row"><div class="loy-q">How many active programmes (including proprietary)?</div><div class="loy-pill loy-na">N/A</div></div>
+      <div class="loy-row"><div class="loy-q">List of all active loyalty or subscription programmes</div><div class="loy-pill loy-na">None</div></div>
+    </div>
+    <div class="loy-box">
+      <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t2);margin-bottom:12px">Redemption Sensitivity · People needed to redeem 100% of credits</div>
+      <table class="red-table">
+        <thead><tr><th>% of LTM</th><th>Credit Ceiling</th><th>People / Year</th><th>Per Month</th><th>Per Day</th></tr></thead>
+        <tbody>
+          <tr><td>1%</td><td>AED 566,919</td><td>531</td><td>44</td><td>1</td></tr>
+          <tr><td>2%</td><td>AED 1,133,839</td><td>1,063</td><td>89</td><td>3</td></tr>
+          <tr><td>3%</td><td>AED 1,700,758</td><td>1,594</td><td>133</td><td>4</td></tr>
+          <tr><td>4%</td><td>AED 2,267,677</td><td>2,125</td><td>177</td><td>6</td></tr>
+          <tr><td>5%</td><td>AED 2,834,597</td><td>2,656</td><td>221</td><td>7</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;font-size:10.5px;color:var(--t2);line-height:1.6">
+        <span style="color:var(--blo);font-weight:700">Note:</span> No active loyalty — zero redemption liability. Assumes AED 1,321 avg spend. All figures indicative pending venue reopening and license renewal.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SHAREHOLDER -->
+<div class="cb">
+  <div class="st">Shareholder Structure</div>
+  <div class="sg">
+    <div class="si2"><div class="sl">Single Owner?</div><div class="sv">No</div></div>
+    <div class="si2"><div class="sl">Authorised Signatory</div><div class="sv">Hafez, Antonio Gonzalez Ortun</div></div>
+    <div class="si2"><div class="sl">Majority Shareholder</div><div class="sv">Sunset Hospitality Holdings Limited</div></div>
+  </div>
+</div>
+
+<!-- KEY CASE HIGHLIGHTS -->
+<div class="kch">
+  <div class="st">Key Case Highlights</div>
+  <div class="kch-grid">
+    <div class="kch-card kch-na">
+      <div class="kch-label">VAT Corroboration to Revenue</div>
+      <div class="kch-value">N/A</div>
+      <div class="kch-sub">Not available — essential given closure period and revenue volatility</div>
+    </div>
+    <div class="kch-card kch-red">
+      <div class="kch-label">Trade License Expiry</div>
+      <div class="kch-value">18 Mar 2026</div>
+      <div class="kch-sub">🚫 EXPIRED — 23 days ago. Hard lending hold active. No disbursement under any tier.</div>
+    </div>
+    <div class="kch-card kch-green">
+      <div class="kch-label">Tenancy Contract Expiry</div>
+      <div class="kch-value">31 Oct 2030</div>
+      <div class="kch-sub">✓ ~1,665 days (~4.6 years) remaining — exceptional lease security. No tenancy risk.</div>
+    </div>
+  </div>
+  <div class="kch-warn">
+    <strong>🚫 HARD HOLD — Trade License Expired + Venue Temporarily Closed:</strong> This case carries two simultaneous hard blocks: (1) the Trade License expired <strong>18 Mar 2026</strong>, 23 days prior to this analysis — the business is currently operating (or closed) without a valid license, which constitutes both a regulatory and credit risk, and (2) the venue profile indicates a <strong>temporary closure</strong> whose duration and cause are unknown. The Mezza credit team must: immediately contact the operator to confirm current operational status, obtain a copy of the renewed Trade License (or DED renewal application), and receive written confirmation of reopening date before any credit assessment can be progressed to approval. <strong>No disbursement under any circumstances until both conditions are resolved.</strong>
+  </div>
+  <div class="kch-warn-amber">
+    <strong>⚠ Watch — Extreme Revenue Trough (Apr-25 AED 473K):</strong> The April trough at only 10% of the monthly average is exceptionally severe. Even accounting for a Ramadan/seasonal pattern or planned closure, a single month of AED 473K against an LTM average of AED 4.7M represents a structural risk for repayment during trough periods. Any future advance must be structured with a trough-aware repayment schedule and must not fall due in Q1/Q2.
+  </div>
+  <div class="kch-warn-green">
+    <strong style="color:var(--bap)">✓ Underlying Case Quality (post-resolution):</strong> Once both blocks are resolved, Epik's underlying credit profile is strong — <strong style="color:var(--bap)">81.7/100 (Grade A)</strong>. AED 1,321 AOV (second highest in portfolio), AED 56.7M LTM revenue, 96% card traceability, 5.45% rent, zero debt, and a near-perfect UAE/GCC digital audience. This is a case worth pursuing actively with the operator — the fundamentals are sound and the tenancy to 2030 provides long-term comfort. Fast-track for approval the moment both conditions are cleared.
+    Conservative = AED 566,919 &nbsp;·&nbsp; Moderate = AED 1,700,758 (conditioned) &nbsp;·&nbsp; Aggressive = not recommended.
+  </div>
+</div>
+
+<!-- S&W -->
+<div class="sww">
+  <div class="st">Strengths &amp; Weaknesses · Credit Assessment Summary</div>
+  <div style="font-size:11px;color:var(--t2);margin-bottom:4px">Epik Entertainment LLC FZ &mdash; Nad Al Shiba &nbsp;·&nbsp; Composite Score: <span style="color:var(--bbp);font-weight:700">81.7 / 100 &nbsp;Grade A</span> &nbsp;<span style="color:var(--blo);font-weight:700">⚠ Hard Hold</span></div>
+  <div class="sww-grid">
+    <div class="sww-box str">
+      <div class="sww-head">✦ Strengths</div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>AED 1,321 AOV — Second Highest in Portfolio:</strong> After Signor Sassi (AED 1,230), Epik commands the second highest average spend per transaction across all 11 assessed venues. Premium entertainment format justifies premium pricing and creates low redemption burden.</span></div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>96% Card Revenue + 96.55% UAE/GCC Audience:</strong> The cleanest combination of electronic traceability and domestic audience quality in the portfolio. Every transaction is verifiable and virtually every website visitor is Mezza-credit eligible.</span></div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>AED 56.7M LTM Revenue at 5.45% Rent:</strong> Excellent revenue scale with an extremely lean fixed-cost base. The business generates strong operating leverage when trading at full capacity.</span></div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>Zero Debt + Tenancy to Oct-2030:</strong> Clean balance sheet and a 4.6-year lease runway — two strong structural anchors that remain fully intact regardless of the current operational disruption.</span></div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>+18.4% H2 Growth (when operating):</strong> During the period the venue was open and trading normally, H2 revenue accelerated positively — confirming the underlying business model is viable and growing when active.</span></div>
+    </div>
+    <div class="sww-box wkn">
+      <div class="sww-head">✦ Weaknesses &amp; Watch Points</div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>Trade License EXPIRED (23 Days) — Hard Block:</strong> The most serious administrative failure in the assessed portfolio. An expired license means the business cannot legally operate in the UAE. No credit advance of any kind until this is resolved and verified.</span></div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>Venue Temporarily Closed — Unknown Status:</strong> Current operational status is unconfirmed. The cause, duration, and resolution timeline of the closure are unknown. Revenue data reflects a prior operating period and cannot be forward-relied upon without confirmation of reopening.</span></div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>Extreme Revenue Trough (Apr-25: AED 473K = 10% of avg):</strong> The deepest absolute and relative trough across all 11 assessed venues. Even if attributable to a planned closure or Ramadan, this level of single-month revenue drop represents a significant repayment risk window.</span></div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>Short Operating History (2.0 Years):</strong> The youngest venue in the portfolio. Only two years of operating data — insufficient to establish a reliable multi-season pattern or confirm sustainable long-term viability beyond the current disruption.</span></div>
+      <div class="sww-item"><span class="sww-dot">●</span><span><strong>Zero SEO/Organic Discovery:</strong> 100% direct traffic with zero organic search means the brand has no digital discovery layer. If the closure erodes brand recall or existing customer base, there is no organic channel to rebuild audience — the business is entirely dependent on word-of-mouth and direct memory.</span></div>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+const score=81.7, b=document.getElementById('ob');
+const g={90:'linear-gradient(135deg,#003d22,#00a055,#00c86e)',80:'linear-gradient(135deg,#1d5c3a,#27ae60,#2ecc71)',70:'linear-gradient(135deg,#1a4a44,#3aada0,#52c8b0)',60:'linear-gradient(135deg,#3d3200,#a08000,#d4a800)',55:'linear-gradient(135deg,#3d2000,#b06000,#e08800)',50:'linear-gradient(135deg,#3d1400,#a04000,#d45a00)',0:'linear-gradient(135deg,#3d0a0a,#8a1a1a,#d43030)'};
+for(const t of [90,80,70,60,55,50,0]){if(score>=t){b.style.background=g[t];break}}
+</script>
+</body>
+</html>

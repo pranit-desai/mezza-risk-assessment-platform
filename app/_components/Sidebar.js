@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "D", matches: ["/", "/cases", "/analytics"] },
   { href: "/new-case", label: "New Case", icon: "N" },
   { href: "/banking", label: "Banking", icon: "B" },
+  { href: "/documents", label: "Documents", icon: "Dc" },
 ];
 
 export default function Sidebar() {

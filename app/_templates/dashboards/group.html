@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sunset Hospitality Group · Mezza Credit Risk · Group Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,500;9..40,700;9..40,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --coral:#e8604a;--coral-d:#c94a34;
+  --card:#161616;--card-2:#1e1e1e;--card-3:#222222;
+  --brd:rgba(255,255,255,0.09);--brd2:rgba(255,255,255,0.05);
+  --t1:#f2ede8;--t2:#888078;--t3:#3a3530;--t4:#242020;
+  --bap:#00c86e;--ba:#2ecc71;--bbp:#52c8b0;--bb:#d4a800;
+  --bcp:#e08800;--bc:#d45a00;--blo:#d43030;
+  --hold:#d43030;--crit:#e05530;--adv:#d4a800;--watch:#e08800;
+  --grp-accent:#7c6dfa;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#e8e4df;padding:28px;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 50% at 0% 0%,rgba(124,109,250,.06) 0%,transparent 55%),
+    radial-gradient(ellipse 40% 35% at 100% 100%,rgba(0,200,110,.04) 0%,transparent 60%)}
+.wrap{position:relative;z-index:1;max-width:1520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+/* ─── GROUP HEADER ─── */
+.grp-header{background:var(--card);border:1.5px solid rgba(124,109,250,.35);border-radius:18px;padding:26px 34px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden}
+.grp-header::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--grp-accent),#a594ff)}
+.grp-header::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,109,250,.4),transparent)}
+.grp-name{font-size:24px;font-weight:900;letter-spacing:-.5px;color:var(--t1)}
+.grp-sub{font-size:12px;color:var(--t2);margin-top:4px;letter-spacing:.2px}
+.grp-meta{text-align:right;font-size:11.5px;color:var(--t2);line-height:2}
+.grp-meta span{color:var(--t1);font-weight:700}
+.grp-badge{display:inline-flex;align-items:center;gap:7px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--grp-accent);background:rgba(124,109,250,.1);border:1px solid rgba(124,109,250,.28);border-radius:6px;padding:4px 11px;margin-top:6px}
+
+/* ─── HARD HOLD BANNER ─── */
+.hold-banner{background:rgba(212,48,48,.16);border:2px solid rgba(212,48,48,.65);border-radius:13px;padding:18px 26px;display:flex;align-items:flex-start;gap:18px}
+.hold-icon{font-size:26px;flex-shrink:0;margin-top:2px}
+.hold-text{font-size:13px;color:#ffb0b0;line-height:1.85}
+.hold-text strong{color:#ff6060;font-weight:800}
+.hold-pill{display:inline-block;background:var(--blo);color:#fff;font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:5px;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
+
+/* ─── KPI ROW ─── */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:13px}
+.kpi{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:20px 22px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:14px 14px 0 0}
+.kpi.k1::after{background:linear-gradient(90deg,var(--grp-accent),transparent)}
+.kpi.k2::after{background:linear-gradient(90deg,var(--bap),transparent)}
+.kpi.k3::after{background:linear-gradient(90deg,var(--bb),transparent)}
+.kpi.k4::after{background:linear-gradient(90deg,var(--bbp),transparent)}
+.kpi.k5::after{background:linear-gradient(90deg,var(--blo),transparent)}
+.kpi-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--t2);margin-bottom:10px}
+.kpi-val{font-size:36px;font-weight:900;letter-spacing:-1.5px;line-height:1}
+.kpi.k1 .kpi-val{color:var(--grp-accent)}
+.kpi.k2 .kpi-val{color:var(--bap)}
+.kpi.k3 .kpi-val{color:var(--bb)}
+.kpi.k4 .kpi-val{color:var(--bbp)}
+.kpi.k5 .kpi-val{color:var(--blo)}
+.kpi-sub{font-size:11px;color:var(--t2);margin-top:6px;font-family:'DM Mono',monospace}
+
+/* ─── COMPOSITE SCORE BANNER ─── */
+.composite{border-radius:20px;padding:38px 56px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;gap:64px}
+.composite::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 65% 55% at 30% 50%,rgba(255,255,255,.07) 0%,transparent 70%);pointer-events:none}
+.comp-gauge{flex-shrink:0;width:250px;height:160px}
+.comp-gauge svg{width:100%;height:100%;overflow:visible}
+.comp-sc{text-align:center}
+.comp-num{font-size:96px;font-weight:900;line-height:1;letter-spacing:-5px;color:#fff}
+.comp-out{font-size:18px;font-weight:500;color:rgba(255,255,255,.55);margin-top:2px;font-family:'DM Mono',monospace}
+.comp-pills{display:flex;justify-content:center;gap:10px;margin-top:14px}
+.comp-pill{font-size:13px;font-weight:700;padding:7px 18px;border-radius:100px;background:rgba(255,255,255,.2);color:#fff;letter-spacing:.5px}
+.comp-detail{text-align:left;font-size:13.5px;line-height:2.2;color:rgba(255,255,255,.8)}
+.comp-detail strong{color:#fff;font-weight:700}
+.comp-formula{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.22);font-family:'DM Mono',monospace;font-size:11.5px;color:rgba(255,255,255,.55);line-height:1.7}
+
+/* ─── LENDING CAPACITY ─── */
+.lend-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.lend{border-radius:13px;padding:24px 28px;border:1px solid}
+.lend.con{background:rgba(0,200,110,.07);border-color:rgba(0,200,110,.22)}
+.lend.mod{background:rgba(212,168,0,.07);border-color:rgba(212,168,0,.22)}
+.lend.agg{background:rgba(212,48,48,.07);border-color:rgba(212,48,48,.25)}
+.lend-h{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--t2);margin-bottom:10px}
+.lend-amt{font-size:32px;font-weight:900;letter-spacing:-1.2px}
+.lend.con .lend-amt{color:var(--bap)}
+.lend.mod .lend-amt{color:var(--bb)}
+.lend.agg .lend-amt{color:var(--blo)}
+.lend-pct{font-size:11px;color:var(--t2);margin-top:5px;font-family:'DM Mono',monospace}
+.lend-desc{font-size:11px;color:var(--t2);margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07);line-height:1.7}
+
+/* Final recommended ceiling (new) */
+.final-ceil{background:linear-gradient(135deg,#1a2a3a,#0f1a24);border-radius:18px;padding:28px 32px;margin:18px 0 8px 0;border:1px solid rgba(124,109,250,.3);position:relative}
+.final-ceil::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--grp-accent);border-radius:4px 0 0 4px}
+.final-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:var(--t2);margin-bottom:10px}
+.final-amount{font-size:48px;font-weight:900;letter-spacing:-2px;color:var(--grp-accent);margin-bottom:6px}
+.final-detail{display:flex;flex-wrap:wrap;gap:28px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)}
+.final-detail-item{flex:1;min-width:140px}
+.final-detail-label{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:5px}
+.final-detail-value{font-size:24px;font-weight:800;color:var(--t1);letter-spacing:-.5px}
+.final-detail-sub{font-size:11px;color:var(--bbp);margin-top:3px;font-family:'DM Mono',monospace}
+
+/* ─── SECTION TITLE ─── */
+.st{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:var(--t2);margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.st::before{content:'';width:14px;height:2px;background:var(--coral);border-radius:1px;flex-shrink:0}
+
+/* ─── VENUE SCORE CARDS ─── */
+.venue-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.vc{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:20px 22px;position:relative;overflow:hidden;transition:transform .18s,box-shadow .18s}
+.vc:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.vc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3.5px;border-radius:0 3px 3px 0}
+.vc.s-hold::before{background:var(--blo)}
+.vc.s-crit::before{background:var(--crit)}
+.vc.s-adv::before{background:var(--adv)}
+.vc.s-watch::before{background:var(--watch)}
+.vc.s-ok::before{background:var(--bap)}
+.vc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.vc-name{font-size:15px;font-weight:800;color:var(--t1);letter-spacing:-.2px;line-height:1.25}
+.vc-entity{font-size:10px;color:var(--t2);margin-top:3px}
+.vc-score{text-align:right;flex-shrink:0;margin-left:12px}
+.vc-num{font-size:38px;font-weight:900;line-height:1;letter-spacing:-1.5px}
+.vc-outof{font-size:12px;color:var(--t2);font-family:'DM Mono',monospace}
+.grade-pill{font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:3px 10px;border-radius:5px;border:1.5px solid;display:inline-block;margin-top:4px}
+.gp-aplus{color:var(--bap);border-color:rgba(0,200,110,.35);background:rgba(0,200,110,.1)}
+.gp-a{color:var(--ba);border-color:rgba(46,204,113,.35);background:rgba(46,204,113,.08)}
+.gp-bplus{color:var(--bbp);border-color:rgba(82,200,176,.3);background:rgba(82,200,176,.08)}
+.vc-rev{font-family:'DM Mono',monospace;font-size:12px;color:var(--t2);margin-bottom:10px}
+.vc-rev strong{color:var(--t1);font-weight:700;font-size:13px}
+.vc-flags{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.vc-flag{font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:5px}
+.vf-grn{background:rgba(0,200,110,.12);color:var(--bap)}
+.vf-red{background:rgba(212,48,48,.12);color:var(--blo)}
+.vc-alert{font-size:10.5px;padding:7px 10px;border-radius:7px;line-height:1.55;font-weight:600}
+.va-hold{background:rgba(212,48,48,.15);color:#ff8080;border:1px solid rgba(212,48,48,.35)}
+.va-crit{background:rgba(224,85,48,.12);color:#ffaa80;border:1px solid rgba(224,85,48,.3)}
+.va-adv{background:rgba(212,168,0,.1);color:#e0c060;border:1px solid rgba(212,168,0,.25)}
+.va-watch{background:rgba(224,136,0,.1);color:#e0a060;border:1px solid rgba(224,136,0,.25)}
+.va-ok{background:rgba(0,200,110,.08);color:#80e0a8;border:1px solid rgba(0,200,110,.2)}
+.vc-docs{margin-top:8px;display:flex;gap:7px;flex-wrap:wrap}
+.doc-tag{font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;font-family:'DM Mono',monospace}
+.dt-red{background:rgba(212,48,48,.18);color:#ff8080}
+.dt-crit{background:rgba(224,85,48,.15);color:#ffb090}
+.dt-adv{background:rgba(212,168,0,.12);color:#d4c060}
+.dt-grn{background:rgba(0,200,110,.1);color:#70d490}
+.dt-watch{background:rgba(224,136,0,.12);color:#d4a060}
+
+/* ─── RISK DISTRIBUTION ─── */
+.risk-dist{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.rd-chart{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:22px 26px}
+.rd-bars{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+.rd-row{display:flex;align-items:center;gap:12px}
+.rd-lbl{font-size:11.5px;color:var(--t2);width:64px;flex-shrink:0;font-weight:600}
+.rd-bar-wrap{flex:1;height:28px;background:rgba(255,255,255,.06);border-radius:6px;overflow:hidden;position:relative}
+.rd-bar{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:12px;font-size:11px;font-weight:700;color:#fff;transition:width .8s ease}
+.rd-cnt{font-family:'DM Mono',monospace;font-size:13px;font-weight:700;width:30px;text-align:right;flex-shrink:0}
+.rd-pct{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);width:40px;text-align:right;flex-shrink:0}
+
+/* ─── AGGREGATE FLAGS ─── */
+.agg-flags{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.af-box{border-radius:13px;border:1px solid;padding:24px 22px}
+.af-box.grn{background:rgba(0,200,110,.07);border-color:rgba(0,200,110,.22)}
+.af-box.red{background:rgba(212,48,48,.07);border-color:rgba(212,48,48,.25)}
+.af-icon{font-size:24px;margin-bottom:8px}
+.af-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--t2);margin-bottom:6px}
+.af-num{font-size:60px;font-weight:900;line-height:1;letter-spacing:-3px;margin-bottom:4px}
+.af-box.grn .af-num{color:var(--bap)}
+.af-box.red .af-num{color:var(--blo)}
+.af-tot{font-size:12px;color:var(--t3);font-family:'DM Mono',monospace;margin-bottom:16px}
+.af-items{padding-top:14px;border-top:1px solid rgba(255,255,255,.07)}
+.af-item{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11.5px;color:var(--t2);line-height:1.65}
+.af-item:last-child{border-bottom:none}
+.af-item strong{font-weight:700}
+.af-box.grn .af-item strong{color:#7de0a8}
+.af-box.red .af-item strong{color:#e09080}
+
+/* ─── DOCUMENT REGISTER (COMPLETE) ─── */
+.doc-table{width:100%;border-collapse:collapse}
+.doc-table thead th{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--t2);padding:8px 12px;text-align:left;border-bottom:1.5px solid rgba(255,255,255,.08)}
+.doc-table tbody tr{border-bottom:1px solid rgba(255,255,255,.04)}
+.doc-table tbody tr:last-child{border-bottom:none}
+.doc-table tbody td{padding:10px 12px;font-size:12px;vertical-align:middle}
+.doc-venue{font-weight:700;color:var(--t1);font-size:13px}
+.doc-entity{font-size:10px;color:var(--t2);margin-top:2px}
+.doc-date{font-family:'DM Mono',monospace;font-size:12px}
+.doc-days{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;display:inline-block}
+.dd-expired{background:rgba(212,48,48,.2);color:#ff7070}
+.dd-critical{background:rgba(224,85,48,.15);color:#ffaa70}
+.dd-amber{background:rgba(212,168,0,.12);color:#d4c060}
+.dd-watch{background:rgba(224,136,0,.12);color:#e0a060}
+.dd-green{background:rgba(0,200,110,.1);color:#70d490}
+.doc-action{font-size:10.5px;color:var(--t2);line-height:1.5}
+.doc-action strong{color:var(--t1);font-weight:700}
+.doc-table tbody tr.row-hold{background:rgba(212,48,48,.05)}
+.doc-table tbody tr.row-crit{background:rgba(224,85,48,.04)}
+.doc-table tbody tr.row-adv{background:rgba(212,168,0,.03)}
+.cb{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:22px 26px}
+
+/* ─── WATCH LIST ─── */
+.watch-grid{display:flex;flex-direction:column;gap:10px}
+.wl-item{border-radius:10px;padding:14px 18px;border:1.5px solid;display:flex;align-items:flex-start;gap:14px}
+.wl-item.w-hold{background:rgba(212,48,48,.1);border-color:rgba(212,48,48,.4)}
+.wl-item.w-crit{background:rgba(224,85,48,.08);border-color:rgba(224,85,48,.3)}
+.wl-item.w-adv{background:rgba(212,168,0,.07);border-color:rgba(212,168,0,.25)}
+.wl-item.w-watch{background:rgba(224,136,0,.06);border-color:rgba(224,136,0,.22)}
+.wl-icon{font-size:20px;flex-shrink:0;margin-top:1px}
+.wl-body{flex:1;font-size:12px;line-height:1.75}
+.wl-body strong{font-weight:700}
+.wl-item.w-hold .wl-body{color:#ffb0b0}
+.wl-item.w-hold .wl-body strong{color:#ff6060}
+.wl-item.w-crit .wl-body{color:#ffcca0}
+.wl-item.w-crit .wl-body strong{color:#ff9060}
+.wl-item.w-adv .wl-body{color:#e0d070}
+.wl-item.w-adv .wl-body strong{color:#d4c840}
+.wl-item.w-watch .wl-body{color:#e0c080}
+.wl-item.w-watch .wl-body strong{color:#d4a840}
+
+@keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.wrap>*{animation:fu .45s ease both}
+.wrap>*:nth-child(1){animation-delay:.03s}
+.wrap>*:nth-child(2){animation-delay:.07s}
+.wrap>*:nth-child(3){animation-delay:.11s}
+.wrap>*:nth-child(4){animation-delay:.15s}
+.wrap>*:nth-child(5){animation-delay:.19s}
+.wrap>*:nth-child(6){animation-delay:.23s}
+.wrap>*:nth-child(7){animation-delay:.27s}
+.wrap>*:nth-child(8){animation-delay:.31s}
+.wrap>*:nth-child(9){animation-delay:.35s}
+.wrap>*:nth-child(10){animation-delay:.39s}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ─── GROUP HEADER ─── -->
+<div class="grp-header">
+  <div>
+    <div class="grp-name">Sunset Hospitality Group</div>
+    <div class="grp-sub">SHG Ventures · Sunrise Sunset · Sunset Hospitality · STG Entertainments &nbsp;·&nbsp; Mezza Credit Risk · Group Composite Dashboard</div>
+    <div class="grp-badge">◈ 12 Venues · 4 Operating Entities · Group Analysis</div>
+  </div>
+  <div class="grp-meta">
+    Analysis Date: <span>10 Apr 2026</span><br>
+    Analyst: <span>Pranit</span> &nbsp;·&nbsp; Checked By: <span>Pranit</span><br>
+    Venues Assessed: <span>12 / 12</span>
+  </div>
+</div>
+
+<!-- ─── HARD HOLD BANNER ─── -->
+<div class="hold-banner">
+  <div class="hold-icon">🚫</div>
+  <div class="hold-text">
+    <strong>2 VENUES UNDER HARD LENDING HOLD — Trade Licenses EXPIRED 18 Mar 2026.</strong><span class="hold-pill">NO DISBURSEMENT</span><br>
+    <strong>Stage Entertainments (Meydan)</strong> and <strong>Epik Entertainment (Nad Al Shiba)</strong> both hold expired licenses as of 23 days ago — the same renewal date suggests a shared administrative oversight across the STG / Sunset group. Additionally, Epik is reporting a temporary closure. No advance may be disbursed to either entity until valid renewed Trade Licenses are presented to the Mezza credit team. Two further venues — <strong>Azure</strong> (expires 30 Apr 2026, ~22 days) and <strong>Signor Sassi</strong> (expires 24 Apr 2026, ~14 days) — are in critical proximity. Contact all four operators immediately.
+  </div>
+</div>
+
+<!-- ─── GROUP KPI ROW ─── -->
+<div class="kpi-row">
+  <div class="kpi k1"><div class="kpi-lbl">Weighted Group Score</div><div class="kpi-val">85.5</div><div class="kpi-sub">Revenue-weighted composite<br>Grade A · Low Risk</div></div>
+  <div class="kpi k2"><div class="kpi-lbl">Total Group LTM Revenue</div><div class="kpi-val" style="font-size:26px;letter-spacing:-1px">AED 598.5M</div><div class="kpi-sub">AED 598,531,312 net VAT<br>12-month trailing</div></div>
+  <div class="kpi k3"><div class="kpi-lbl">Venues Assessed</div><div class="kpi-val">12</div><div class="kpi-sub">2 Hard Hold · 2 Critical<br>2 Advisory · 6 Clear</div></div>
+  <div class="kpi k4"><div class="kpi-lbl">Total Green Flags</div><div class="kpi-val">72</div><div class="kpi-sub">Across 12 venues<br>Avg 6.0 per venue</div></div>
+  <div class="kpi k5"><div class="kpi-lbl">Total Red Flags</div><div class="kpi-val">9</div><div class="kpi-sub">Across 5 venues<br>3 TL-related hard stops</div></div>
+</div>
+
+<!-- ─── COMPOSITE SCORE BANNER ─── -->
+<div class="composite" id="comp">
+  <div class="comp-gauge"><svg viewBox="0 0 280 160" fill="none"><path d="M32 150   A108 108 0 0 1 44.6 101.2" stroke="rgba(255,255,255,.12)" stroke-width="19"/><path d="M44.6 101.2 A108 108 0 0 1 72.7 65.6" stroke="rgba(255,255,255,.22)" stroke-width="19"/><path d="M72.7 65.6  A108 108 0 0 1 116 44.7" stroke="rgba(255,255,255,.34)" stroke-width="19"/><path d="M116 44.7   A108 108 0 0 1 164 44.7" stroke="rgba(255,255,255,.48)" stroke-width="19"/><path d="M164 44.7   A108 108 0 0 1 207.3 65.6" stroke="rgba(255,255,255,.64)" stroke-width="19"/><path d="M207.3 65.6 A108 108 0 0 1 235.4 101.2" stroke="rgba(255,255,255,.80)" stroke-width="19"/><path d="M235.4 101.2 A108 108 0 0 1 248 150" stroke="rgba(255,255,255,.96)" stroke-width="19"/><line x1="140" y1="150" x2="236.9" y2="102.5" stroke="white" stroke-width="4"/><circle cx="140" cy="150" r="9" fill="white"/><circle cx="140" cy="150" r="4" fill="rgba(0,0,0,.25)"/></svg></div>
+  <div class="comp-sc"><div class="comp-num">85.5</div><div class="comp-out">/ 100</div><div class="comp-pills"><div class="comp-pill">LOW RISK ◈</div><div class="comp-pill">A</div></div></div>
+  <div class="comp-detail"><div>Methodology: <strong>Revenue-Weighted Composite</strong></div><div>Highest venue: <strong>Sky Pool 90.6</strong> (25.2% weight)</div><div>Lowest venue: <strong>Gold Fish 73.3</strong> (1.5% weight)</div><div>Median venue score: <strong>83.6</strong></div><div class="comp-formula">Score = Σ (Venue Score × Venue LTM / Group LTM)<br>= Weighted across 12 venues &nbsp;·&nbsp; AED 598,531,312 total<br>Group Grade A · 10/12 venues Grade A or A+<br>⚠ 2 venues Hard Hold · 2 venues Critical TL proximity</div></div>
+</div>
+
+<!-- ─── GROUP LENDING CAPACITY ─── -->
+<div class="cb">
+  <div class="st">Group Lending Capacity · Tier Recommendations · Based on Total Group LTM</div>
+  <div class="lend-grid">
+    <div class="lend con"><div class="lend-h">Conservative</div><div class="lend-amt">AED 5,985,313</div><div class="lend-pct">1% of AED 598,531,312 Group LTM</div><div class="lend-desc">Appropriate group-level floor. Distributable across all venues that are clear of hard holds. Excludes Stage and Epik until Trade Licenses renewed. Strong repayment headroom across all 10 eligible venues combined.</div></div>
+    <div class="lend mod"><div class="lend-h">Moderate</div><div class="lend-amt">AED 17,955,939</div><div class="lend-pct">3% of AED 598,531,312 Group LTM</div><div class="lend-desc">Preferred ceiling for the group as a whole. Sky Pool (AED 150.6M) and Cloud 51 (AED 119M) alone account for 45% of group revenue, anchoring repayment confidence. Condition: all TL renewals confirmed before individual advances at this tier proceed.</div></div>
+    <div class="lend agg"><div class="lend-h">Aggressive</div><div class="lend-amt">AED 29,926,566</div><div class="lend-pct">5% of AED 598,531,312 Group LTM</div><div class="lend-desc">Upper bound — supportable by revenue scale. However, 2 hard holds, 2 critical TL proximities, 1 temp closure, and Hanu's 16.09% rent flag mean the aggressive tier should only be deployed once all document conditions across the group are cleared and stable.</div></div>
+  </div>
+</div>
+
+<!-- ─── FINAL RECOMMENDED CEILING & DISBURSEMENT (GROUP LEVEL) ─── -->
+<div class="final-ceil">
+  <div class="final-title">★ FINAL RECOMMENDED CEILING · GROUP HOLISTIC LEVEL</div>
+  <div class="final-amount">AED 23,941,252</div>
+  <div style="font-size:12px; color:var(--t2); margin-bottom:12px;">4% of total Group LTM revenue (AED 598,531,312)</div>
+  <div class="final-detail">
+    <div class="final-detail-item">
+      <div class="final-detail-label">🚀 PILOT (20% upfront)</div>
+      <div class="final-detail-value">AED 4,788,250</div>
+      <div class="final-detail-sub">Disbursed immediately upon approval</div>
+    </div>
+    <div class="final-detail-item">
+      <div class="final-detail-label">📆 QUARTERLY DISBURSEMENT (80% split over 4 quarters)</div>
+      <div class="final-detail-value">AED 4,788,250</div>
+      <div class="final-detail-sub">Each quarter (20% of final ceiling) · Total remaining AED 19,153,002</div>
+    </div>
+    <div class="final-detail-item">
+      <div class="final-detail-label">📊 % OF GROUP REVENUE</div>
+      <div class="final-detail-value">4.00%</div>
+      <div class="final-detail-sub">Holistic group-level lending exposure</div>
+    </div>
+  </div>
+  <div style="margin-top:14px; font-size:11px; color:var(--bbp); border-top:1px solid rgba(255,255,255,.08); padding-top:12px;">* Pilot = 20% of final ceiling (AED 23,941,252). Remaining 80% split into 4 equal quarterly instalments. All disbursements subject to TL renewal conditions and Mezza credit policy.</div>
+</div>
+
+<!-- ─── VENUE SCORE CARDS (abridged for length, same as original structure) ─── -->
+<div class="cb"><div class="st">Per-Venue Score Cards · Individual Assessment Summary</div>
+<div class="venue-grid">
+  <!-- Sky Pool -->
+  <div class="vc s-adv"><div class="vc-top"><div><div class="vc-name">Sky Pool Cafe &amp; Restaurant</div><div class="vc-entity">SHG Ventures · Nakheel Malls</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bap)">90.6</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-aplus">A+</span></div></div></div><div class="vc-rev">LTM: <strong>AED 150,609,099</strong> &nbsp;·&nbsp; 25.2% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 6 Green</span><span class="vc-flag vf-red" style="background:rgba(0,200,110,.05);color:var(--bap)">0 Red</span></div><div class="vc-alert va-adv">⚠ TL expires 25 May 2026 (~47 days) — within 60-day window. Confirm renewal before drawdown.</div><div class="vc-docs"><span class="doc-tag dt-adv">TL: 25 May 2026</span><span class="doc-tag dt-adv">Tenancy: 28 Feb 2027</span></div></div>
+  <!-- Cloud 51 -->
+  <div class="vc s-adv"><div class="vc-top"><div><div class="vc-name">Cloud Fifty One Cafe &amp; Restaurant</div><div class="vc-entity">SHG Ventures · The Palm</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bap)">87.7</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-a">A</span></div></div></div><div class="vc-rev">LTM: <strong>AED 118,954,694</strong> &nbsp;·&nbsp; 19.9% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 5 Green</span><span class="vc-flag vf-red" style="background:rgba(0,200,110,.05);color:var(--bap)">0 Red</span></div><div class="vc-alert va-adv">⚠ TL expires 25 May 2026 (~47 days) &amp; Tenancy expires 30 Sep 2026 (~175 days). Both require active monitoring.</div><div class="vc-docs"><span class="doc-tag dt-adv">TL: 25 May 2026</span><span class="doc-tag dt-adv">Tenancy: 30 Sep 2026</span></div></div>
+  <!-- Epik HOLD -->
+  <div class="vc s-hold"><div class="vc-top"><div><div class="vc-name">Epik Entertainment LLC FZ</div><div class="vc-entity">Sunset Hospitality · Nad Al Shiba</div></div><div class="vc-score"><div class="vc-num" style="color:var(--blo)">81.7</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-a">A</span></div></div></div><div class="vc-rev">LTM: <strong>AED 56,691,936</strong> &nbsp;·&nbsp; 9.5% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 5 Green</span><span class="vc-flag vf-red">🔴 3 Red</span></div><div class="vc-alert va-hold">🚫 HARD HOLD — TL EXPIRED 18 Mar 2026 + Venue Temporarily Closed. No disbursement.</div><div class="vc-docs"><span class="doc-tag dt-red">TL: EXPIRED</span><span class="doc-tag dt-grn">Tenancy: 31 Oct 2030</span></div></div>
+  <!-- Dream, Mott, Signor, Stage, Sunset Harbour, Azure, Sunset JI, Hanu, Gold Fish - same as original but shortened for brevity, keeping identical content -->
+  <div class="vc s-ok"><div class="vc-top"><div><div class="vc-name">Dream Restaurant and Cafe</div><div class="vc-entity">SHG Ventures · Marsa Dubai</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bap)">85.4</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-a">A</span></div></div></div><div class="vc-rev">LTM: <strong>AED 38,456,710</strong> &nbsp;·&nbsp; 6.4% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 5 Green</span><span class="vc-flag vf-red" style="background:rgba(0,200,110,.05);color:var(--bap)">0 Red</span></div><div class="vc-alert va-ok">✓ Clear — Both documents green. Fast-track approved at conservative &amp; moderate tier.</div><div class="vc-docs"><span class="doc-tag dt-grn">TL: 11 Oct 2026</span><span class="doc-tag dt-grn">Tenancy: 30 Sep 2027</span></div></div>
+  <!-- Mott -->
+  <div class="vc s-ok"><div class="vc-top"><div><div class="vc-name">Mott Restaurant and Cafe</div><div class="vc-entity">SHG Ventures · Dubai Marina</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bap)">84.4</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-a">A</span></div></div></div><div class="vc-rev">LTM: <strong>AED 23,477,243</strong> &nbsp;·&nbsp; 3.9% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 6 Green</span><span class="vc-flag vf-red" style="background:rgba(0,200,110,.05);color:var(--bap)">0 Red</span></div><div class="vc-alert va-ok">✓ Clear — Strongest H2 growth (+61.3%) in portfolio. No conditions at conservative/moderate.</div><div class="vc-docs"><span class="doc-tag dt-grn">TL: 11 Dec 2026</span><span class="doc-tag dt-grn">Tenancy: 31 Oct 2027</span></div></div>
+  <!-- Signor Sassi -->
+  <div class="vc s-crit"><div class="vc-top"><div><div class="vc-name">Signor Sassi Restaurant</div><div class="vc-entity">SHG Ventures · Palm Jumeirah</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bcp)">84.1</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-a">A</span></div></div></div><div class="vc-rev">LTM: <strong>AED 36,362,155</strong> &nbsp;·&nbsp; 6.1% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 6 Green</span><span class="vc-flag vf-red">🔴 1 Red</span></div><div class="vc-alert va-crit">🚨 CRITICAL — TL expires 24 Apr 2026 (~14 days). Hard lending hold. Contact operator TODAY.</div><div class="vc-docs"><span class="doc-tag dt-critical">TL: 24 Apr 2026 ⚠</span><span class="doc-tag dt-grn">Tenancy: 24 Sep 2028</span></div></div>
+  <!-- Stage HOLD -->
+  <div class="vc s-hold"><div class="vc-top"><div><div class="vc-name">Stage Entertainments L.L.C-FZ</div><div class="vc-entity">STG Entertainments · Meydan</div></div><div class="vc-score"><div class="vc-num" style="color:var(--blo)">83.6</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-a">A</span></div></div></div><div class="vc-rev">LTM: <strong>AED 43,248,733</strong> &nbsp;·&nbsp; 7.2% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 8 Green</span><span class="vc-flag vf-red">🔴 2 Red</span></div><div class="vc-alert va-hold">🚫 HARD HOLD — TL EXPIRED 18 Mar 2026. Strongest underlying case (7yr tenure, 100% card). Resolve immediately.</div><div class="vc-docs"><span class="doc-tag dt-red">TL: EXPIRED</span><span class="doc-tag dt-grn">Tenancy: 30 Nov 2027</span></div></div>
+  <!-- Sunset Harbour -->
+  <div class="vc s-ok"><div class="vc-top"><div><div class="vc-name">Sunset Harbour Restaurant</div><div class="vc-entity">SHG Ventures · Marsa Dubai</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bap)">82.7</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-a">A</span></div></div></div><div class="vc-rev">LTM: <strong>AED 26,303,609</strong> &nbsp;·&nbsp; 4.4% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 6 Green</span><span class="vc-flag vf-red" style="background:rgba(0,200,110,.05);color:var(--bap)">0 Red</span></div><div class="vc-alert va-ok">✓ Clear — +48.8% H2 growth, highest website engagement (230s). Conservative/moderate approved.</div><div class="vc-docs"><span class="doc-tag dt-grn">TL: 11 Oct 2026</span><span class="doc-tag dt-grn">Tenancy: 28 Feb 2028</span></div></div>
+  <!-- Azure -->
+  <div class="vc s-crit"><div class="vc-top"><div><div class="vc-name">Azure Restaurant</div><div class="vc-entity">Sunset Hospitality · Rixos JBR</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bcp)">81.3</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-a">A</span></div></div></div><div class="vc-rev">LTM: <strong>AED 46,632,434</strong> &nbsp;·&nbsp; 7.8% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 7 Green</span><span class="vc-flag vf-red" style="background:rgba(0,200,110,.05);color:var(--bap)">0 Red</span></div><div class="vc-alert va-crit">🚨 CRITICAL — TL expires 30 Apr 2026 (~22 days). No disbursement until renewal confirmed.</div><div class="vc-docs"><span class="doc-tag dt-critical">TL: 30 Apr 2026 ⚠</span><span class="doc-tag dt-grn">Tenancy: 28 Feb 2027</span></div></div>
+  <!-- Sunset JI Gym -->
+  <div class="vc s-ok"><div class="vc-top"><div><div class="vc-name">Sunset J I Gym</div><div class="vc-entity">Sunrise Sunset · Jumeirah Islands</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bap)">81.7</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-a">A</span></div></div></div><div class="vc-rev">LTM: <strong>AED 30,431,276</strong> &nbsp;·&nbsp; 5.1% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 6 Green</span><span class="vc-flag vf-red" style="background:rgba(0,200,110,.05);color:var(--bap)">0 Red</span></div><div class="vc-alert va-ok">✓ Clear — 91% card revenue, 5.1yr tenure, longest tenancy (~5yr) in the portfolio.</div><div class="vc-docs"><span class="doc-tag dt-grn">TL: 28 Feb 2027</span><span class="doc-tag dt-grn">Tenancy: 31 Mar 2031</span></div></div>
+  <!-- Hanu -->
+  <div class="vc s-watch"><div class="vc-top"><div><div class="vc-name">Hanu Restaurant and Cafe</div><div class="vc-entity">SHG Ventures · Nakheel Mall, Palm</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bbp)">75.5</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-bplus">B+</span></div></div></div><div class="vc-rev">LTM: <strong>AED 18,627,734</strong> &nbsp;·&nbsp; 3.1% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 6 Green</span><span class="vc-flag vf-red">🔴 2 Red</span></div><div class="vc-alert va-watch">⚠ WATCH — Rent/Rev 16.09% (above 15% threshold) + TL expires 19 Jun 2026 (~71 days). Conservative only.</div><div class="vc-docs"><span class="doc-tag dt-watch">TL: 19 Jun 2026</span><span class="doc-tag dt-grn">Tenancy: 28 Feb 2028</span></div></div>
+  <!-- Gold Fish -->
+  <div class="vc s-watch"><div class="vc-top"><div><div class="vc-name">Gold Fish A N Restaurant</div><div class="vc-entity">Sunrise Sunset · Al Wasl</div></div><div class="vc-score"><div class="vc-num" style="color:var(--bbp)">73.3</div><div class="vc-outof">/100</div><div><span class="grade-pill gp-bplus">B+</span></div></div></div><div class="vc-rev">LTM: <strong>AED 8,735,689</strong> &nbsp;·&nbsp; 1.5% of group</div><div class="vc-flags"><span class="vc-flag vf-grn">🟢 6 Green</span><span class="vc-flag vf-red">🔴 1 Red</span></div><div class="vc-alert va-watch">⚠ WATCH — 59% delivery revenue concentration + −8.1% H2 decline. Conservative only, advance vs. in-venue base.</div><div class="vc-docs"><span class="doc-tag dt-grn">TL: 05 Dec 2026</span><span class="doc-tag dt-grn">Tenancy: 29 Dec 2030</span></div></div>
+</div></div>
+
+<!-- ─── RISK DISTRIBUTION + AGGREGATE FLAGS (unchanged) ─── -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <div class="cb"><div class="st">Risk Grade Distribution · 12 Venues</div><div class="rd-bars"><div class="rd-row"><div class="rd-lbl">Grade A+</div><div class="rd-bar-wrap"><div class="rd-bar" style="width:8.3%;background:linear-gradient(90deg,#00875a,#00c86e)">Sky Pool</div></div><div class="rd-cnt" style="color:var(--bap)">1</div><div class="rd-pct">8%</div></div><div class="rd-row"><div class="rd-lbl">Grade A</div><div class="rd-bar-wrap"><div class="rd-bar" style="width:75%;background:linear-gradient(90deg,#1d5c3a,#2ecc71)">Stage · Epik · Mott · Signor Sassi · Sunset Harbour · Sunset JI · Dream · Cloud 51 · Azure</div></div><div class="rd-cnt" style="color:var(--ba)">9</div><div class="rd-pct">75%</div></div><div class="rd-row"><div class="rd-lbl">Grade B+</div><div class="rd-bar-wrap"><div class="rd-bar" style="width:16.7%;background:linear-gradient(90deg,#1a4a44,#52c8b0)">Hanu · Gold Fish</div></div><div class="rd-cnt" style="color:var(--bbp)">2</div><div class="rd-pct">17%</div></div><div class="rd-row"><div class="rd-lbl" style="color:var(--t3)">Below B+</div><div class="rd-bar-wrap"><div class="rd-bar" style="width:0%;background:var(--blo)"></div></div><div class="rd-cnt" style="color:var(--t3)">0</div><div class="rd-pct" style="color:var(--t3)">0%</div></div></div>
+  <div style="margin-top:22px"><div class="st" style="margin-bottom:12px">Document Status Distribution · 12 Venues</div><div class="rd-bars"><div class="rd-row"><div class="rd-lbl" style="color:#ff6060;font-size:10.5px">Hard Hold</div><div class="rd-bar-wrap"><div class="rd-bar" style="width:16.7%;background:linear-gradient(90deg,#8a1a1a,#d43030)">Stage · Epik</div></div><div class="rd-cnt" style="color:var(--blo)">2</div><div class="rd-pct">17%</div></div><div class="rd-row"><div class="rd-lbl" style="color:#ff9060;font-size:10.5px">Critical</div><div class="rd-bar-wrap"><div class="rd-bar" style="width:16.7%;background:linear-gradient(90deg,#7a2a10,#e05530)">Signor · Azure</div></div><div class="rd-cnt" style="color:var(--crit)">2</div><div class="rd-pct">17%</div></div><div class="rd-row"><div class="rd-lbl" style="color:#d4c060;font-size:10.5px">Advisory</div><div class="rd-bar-wrap"><div class="rd-bar" style="width:16.7%;background:linear-gradient(90deg,#5a4400,#d4a800)">Sky Pool · Cloud51</div></div><div class="rd-cnt" style="color:var(--bb)">2</div><div class="rd-pct">17%</div></div><div class="rd-row"><div class="rd-lbl" style="color:#d4a060;font-size:10.5px">Watch</div><div class="rd-bar-wrap"><div class="rd-bar" style="width:16.7%;background:linear-gradient(90deg,#5a3800,#e08800)">Hanu · Gold Fish</div></div><div class="rd-cnt" style="color:var(--bcp)">2</div><div class="rd-pct">17%</div></div><div class="rd-row"><div class="rd-lbl" style="color:#70d490;font-size:10.5px">Clear</div><div class="rd-bar-wrap"><div class="rd-bar" style="width:33.3%;background:linear-gradient(90deg,#004a22,#00c86e)">Mott · Dream · Sunset Harbour · Sunset JI Gym</div></div><div class="rd-cnt" style="color:var(--bap)">4</div><div class="rd-pct">33%</div></div></div></div></div>
+  <div class="cb"><div class="st">Aggregate Decision Flags · Group Total</div><div class="agg-flags"><div class="af-box grn"><div class="af-icon">🟢</div><div class="af-lbl">Total Green Flags</div><div class="af-num">72</div><div class="af-tot">across 12 venues · avg 6.0 per venue</div><div class="af-items"><div class="af-item"><strong>Zero Debt (12/12)</strong> — Every assessed venue carries zero existing debt. Clean DBR baseline across the entire group.</div><div class="af-item"><strong>Sky Pool Dominant</strong> — AED 150.6M, 1.35% rent, Qlub, 115K visits. Highest single-venue score (90.6).</div><div class="af-item"><strong>Stage — 8 Green Flags</strong> — Most tenured venue (7yr), 100% card, AED 1,250 AOV. Best underlying case post-renewal.</div><div class="af-item"><strong>Azure — 7 Green Flags</strong> — Tied highest flag count. AED 46.6M, Qlub active, diversified revenue, +16.8% YoY.</div><div class="af-item"><strong>8 of 12 venues have Qlub</strong> — Immediate Mezza credit layering capability across majority of portfolio.</div><div class="af-item"><strong>10 of 12 venues Grade A or A+</strong> — Strongest group-level quality profile assessed on the platform.</div></div></div><div class="af-box red"><div class="af-icon">🔴</div><div class="af-lbl">Total Red Flags</div><div class="af-num">9</div><div class="af-tot">across 5 venues · 3 TL-related hard stops</div><div class="af-items"><div class="af-item"><strong>Stage TL EXPIRED (18 Mar)</strong> — 23 days expired. Hard hold. Likely shared renewal admin failure with Epik.</div><div class="af-item"><strong>Epik TL EXPIRED + Temp Closed</strong> — Dual block: expired license AND operational closure. Highest risk position in group.</div><div class="af-item"><strong>Signor Sassi TL ~14 days</strong> — Most urgent active license. Expires 24 Apr 2026. Immediate operator contact required.</div><div class="af-item"><strong>Epik Extreme Trough (AED 473K)</strong> — 10% of monthly average. Structural repayment risk at moderate/aggressive tiers.</div><div class="af-item"><strong>Hanu Rent 16.09%</strong> — Exceeds 15% critical threshold. Conservative only until rent normalises.</div><div class="af-item"><strong>Gold Fish 59% Delivery</strong> — In-venue redemption pool limited to ~41% of AED 8.7M LTM. Advance vs. in-venue base only.</div><div class="af-item"><strong>Stage &amp; Epik Mar-25 Troughs</strong> — Near-zero revenue months require documented seasonal confirmation before scheduling repayments.</div></div></div></div></div>
+</div>
+
+<!-- ─── GROUP WATCH LIST ─── -->
+<div class="cb"><div class="st">Group-Level Priority Watch List · Actions Required</div><div class="watch-grid"><div class="wl-item w-hold"><div class="wl-icon">🚫</div><div class="wl-body"><strong>IMMEDIATE — Stage Entertainments + Epik Entertainment: Trade Licenses EXPIRED 18 Mar 2026.</strong> Both venues share the same expiry date — a likely shared administrative oversight in the STG / Sunset renewal cycle. Escalate to Sunset Hospitality Holdings management for a coordinated renewal update. Stage is actively operating without a valid license (regulatory breach). Epik is additionally temporarily closed. No disbursement of any advance to either venue until renewed TLs are in hand. Target resolution: within 3 business days.</div></div><div class="wl-item w-crit"><div class="wl-icon">🚨</div><div class="wl-body"><strong>URGENT — Signor Sassi (24 Apr 2026, ~14 days) + Azure Restaurant (30 Apr 2026, ~22 days): Trade Licenses expire within the month.</strong> Contact both operators today. Obtain DED renewal receipt or renewed license before any disbursement. If the credit process takes more than 5–10 business days, these venues will be in hard-hold territory before drawdown can complete. Signor Sassi's underlying case (84.1/100, AED 1,230 AOV, Qlub, 100% UAE/GCC audience) is among the strongest in the portfolio — do not let an administrative lapse block a strong case.</div></div><div class="wl-item w-adv"><div class="wl-icon">⚠</div><div class="wl-body"><strong>ADVISORY — Sky Pool (TL 25 May 2026) + Cloud 51 (TL 25 May 2026 + Tenancy 30 Sep 2026): Both within 60-day window.</strong> Sky Pool and Cloud 51 share the same TL expiry date — again suggesting a shared renewal cycle at SHG Ventures. Confirm renewals are in progress for both. Additionally, Cloud 51's tenancy expires 30 Sep 2026 (~175 days) — approaching the 180-day advisory threshold. Lease renewal must be confirmed before any aggressive-tier advance at Cloud 51 is progressed. These two venues account for 45% of group LTM revenue.</div></div><div class="wl-item w-watch"><div class="wl-icon">👁</div><div class="wl-body"><strong>WATCH — Hanu Restaurant: Rent/Revenue 16.09% (above threshold) + TL 19 Jun 2026.</strong> While Hanu's trade license has ~71 days remaining (just outside the strict 60-day window at analysis date), processing delays could push drawdown into the critical window. Combined with the above-threshold rent flag, Hanu must only be advanced at the conservative tier (AED 186,277) and only after the TL renewal is confirmed. The underlying business has strong +48.4% H2 momentum — this is a structural cost issue, not an operational failure.</div></div><div class="wl-item w-watch"><div class="wl-icon">👁</div><div class="wl-body"><strong>WATCH — Gold Fish: 59% delivery concentration + −8.1% H2 revenue decline.</strong> The majority of Gold Fish's revenue flows through third-party aggregators with typical commission rates of 20–30%. The effective in-venue revenue base for Mezza credit sizing is approximately AED 3.6M (41% of AED 8.7M). Any advance must be sized against this net figure. The −8.1% H2 trajectory is the steepest decline in the group — confirm whether this is seasonal (Al Wasl catchment) or structural delivery platform softness before proceeding beyond conservative tier.</div></div></div></div>
+
+<!-- ─── COMPLETE DOCUMENT REGISTER (FULL TABLE) ─── -->
+<div class="cb">
+  <div class="st">Complete Document Register — Trade Licenses &amp; Tenancy Contracts · All 12 Venues</div>
+  <table class="doc-table">
+    <thead><tr><th>Venue</th><th>Trade License Expiry</th><th style="text-align:center">TL Status</th><th>Tenancy Expiry</th><th style="text-align:center">Tenancy Status</th><th>Required Action</th></tr></thead>
+    <tbody>
+      <tr class="row-hold"><td><div class="doc-venue">Stage Entertainments</div><div class="doc-entity">STG Entertainments · Meydan</div></td><td class="doc-date" style="color:#ff6060;font-weight:700">18 Mar 2026</td><td style="text-align:center"><span class="doc-days dd-expired">EXPIRED · −23d</span></td><td class="doc-date">30 Nov 2027</td><td style="text-align:center"><span class="doc-days dd-green">~600d ✓</span></td><td class="doc-action"><strong>HARD HOLD.</strong> Obtain renewed TL or DED renewal confirmation immediately. No disbursement under any tier until resolved.</td></tr>
+      <tr class="row-hold"><td><div class="doc-venue">Epik Entertainment</div><div class="doc-entity">Sunset Hospitality · Nad Al Shiba</div></td><td class="doc-date" style="color:#ff6060;font-weight:700">18 Mar 2026</td><td style="text-align:center"><span class="doc-days dd-expired">EXPIRED · −23d</span></td><td class="doc-date">31 Oct 2030</td><td style="text-align:center"><span class="doc-days dd-green">~1,665d ✓</span></td><td class="doc-action"><strong>HARD HOLD + CLOSED.</strong> Obtain renewed TL AND confirm venue has reopened. Two simultaneous blocks must both be resolved.</td></tr>
+      <tr class="row-crit"><td><div class="doc-venue">Signor Sassi Restaurant</div><div class="doc-entity">SHG Ventures · Palm Jumeirah</div></td><td class="doc-date" style="color:#ff9060;font-weight:700">24 Apr 2026</td><td style="text-align:center"><span class="doc-days dd-critical">~14d 🚨</span></td><td class="doc-date">24 Sep 2028</td><td style="text-align:center"><span class="doc-days dd-green">~898d ✓</span></td><td class="doc-action"><strong>Contact operator today.</strong> Obtain DED renewal receipt before any drawdown. Fast-track post-renewal — 84.1/100, Qlub active.</td></tr>
+      <tr class="row-crit"><td><div class="doc-venue">Azure Restaurant</div><div class="doc-entity">Sunset Hospitality · Rixos JBR</div></td><td class="doc-date" style="color:#ff9060;font-weight:700">30 Apr 2026</td><td style="text-align:center"><span class="doc-days dd-critical">~22d 🚨</span></td><td class="doc-date">28 Feb 2027</td><td style="text-align:center"><span class="doc-days dd-green">~326d ✓</span></td><td class="doc-action"><strong>Contact operator immediately.</strong> Confirm renewal in progress. No disbursement until renewed license in hand. Strong case (81.3/100).</td></tr>
+      <tr class="row-adv"><td><div class="doc-venue">Sky Pool Cafe &amp; Restaurant</div><div class="doc-entity">SHG Ventures · Nakheel Malls</div></td><td class="doc-date" style="color:var(--bb)">25 May 2026</td><td style="text-align:center"><span class="doc-days dd-amber">~47d ⚠</span></td><td class="doc-date">28 Feb 2027</td><td style="text-align:center"><span class="doc-days dd-green">~326d ✓</span></td><td class="doc-action">Within 60-day window. Confirm renewal in progress. Must not disburse without renewed TL. Highest revenue venue — prioritise.</td></tr>
+      <tr class="row-adv"><td><div class="doc-venue">Cloud Fifty One</div><div class="doc-entity">SHG Ventures · The Palm</div></td><td class="doc-date" style="color:var(--bb)">25 May 2026</td><td style="text-align:center"><span class="doc-days dd-amber">~47d ⚠</span></td><td class="doc-date" style="color:var(--bb);font-weight:700">30 Sep 2026</td><td style="text-align:center"><span class="doc-days dd-amber">~175d ⚠</span></td><td class="doc-action"><strong>Dual advisory.</strong> Confirm TL renewal and lease renewal. Tenancy at ~175 days approaching 180-day threshold. Critical for aggressive-tier comfort.</td></tr>
+      <tr><td><div class="doc-venue">Hanu Restaurant</div><div class="doc-entity">SHG Ventures · Nakheel Mall, Palm</div></td><td class="doc-date" style="color:var(--bcp)">19 Jun 2026</td><td style="text-align:center"><span class="doc-days dd-watch">~71d 👁</span></td><td class="doc-date">28 Feb 2028</td><td style="text-align:center"><span class="doc-days dd-green">~691d ✓</span></td><td class="doc-action">Approaching window — confirm TL renewal before any disbursement. Also: resolve rent/revenue flag (16.09%) before moderate tier.</td></tr>
+      <tr><td><div class="doc-venue">Dream Restaurant</div><div class="doc-entity">SHG Ventures · Marsa Dubai</div></td><td class="doc-date">11 Oct 2026</td><td style="text-align:center"><span class="doc-days dd-green">~185d ✓</span></td><td class="doc-date">30 Sep 2027</td><td style="text-align:center"><span class="doc-days dd-green">~539d ✓</span></td><td class="doc-action">Both documents green. No conditions required. Fast-track conservative/moderate.</td></tr>
+      <tr><td><div class="doc-venue">Sunset Harbour Restaurant</div><div class="doc-entity">SHG Ventures · Marsa Dubai</div></td><td class="doc-date">11 Oct 2026</td><td style="text-align:center"><span class="doc-days dd-green">~185d ✓</span></td><td class="doc-date">28 Feb 2028</td><td style="text-align:center"><span class="doc-days dd-green">~691d ✓</span></td><td class="doc-action">Both documents green. No conditions. Conservative/moderate approved.</td></tr>
+      <tr><td><div class="doc-venue">Mott Restaurant and Cafe</div><div class="doc-entity">SHG Ventures · Dubai Marina</div></td><td class="doc-date">11 Dec 2026</td><td style="text-align:center"><span class="doc-days dd-green">~246d ✓</span></td><td class="doc-date">31 Oct 2027</td><td style="text-align:center"><span class="doc-days dd-green">~570d ✓</span></td><td class="doc-action">Both documents green. No conditions. Strongest H2 growth (+61.3%) in portfolio. Fast-track approved.</td></tr>
+      <tr><td><div class="doc-venue">Gold Fish A N Restaurant</div><div class="doc-entity">Sunrise Sunset · Al Wasl</div></td><td class="doc-date">05 Dec 2026</td><td style="text-align:center"><span class="doc-days dd-green">~240d ✓</span></td><td class="doc-date">29 Dec 2030</td><td style="text-align:center"><span class="doc-days dd-green">~1,725d ✓</span></td><td class="doc-action">Documents green. Conditions apply on credit side only — delivery concentration &amp; H2 decline flags. Conservative only pending review.</td></tr>
+      <tr><td><div class="doc-venue">Sunset J I Gym</div><div class="doc-entity">Sunrise Sunset · Jumeirah Islands</div></td><td class="doc-date">28 Feb 2027</td><td style="text-align:center"><span class="doc-days dd-green">~326d ✓</span></td><td class="doc-date">31 Mar 2031</td><td style="text-align:center"><span class="doc-days dd-green">~1,817d ✓</span></td><td class="doc-action">Cleanest document position in the group. Both fully green, no conditions. Conservative/moderate/aggressive all eligible.</td></tr>
+    </tbody>
+  </table>
+  <div style="margin-top:18px;background:rgba(212,48,48,.08);border:1.5px solid rgba(212,48,48,.3);border-radius:9px;padding:14px 18px;font-size:12px;color:#f0a0a0;line-height:1.8"><strong style="color:#ff6060">Critical Summary — Documents Imperative to Obtain:</strong><br>1. <strong>Stage Entertainments</strong> — Renewed Trade License (DED) · EXPIRED · Obtain immediately · No disbursement until received<br>2. <strong>Epik Entertainment</strong> — Renewed Trade License (DED) + Written confirmation of venue reopening date · EXPIRED + CLOSED · No disbursement until both resolved<br>3. <strong>Signor Sassi Restaurant</strong> — Renewed Trade License or DED renewal receipt · Expires 24 Apr 2026 (~14 days) · Contact operator today<br>4. <strong>Azure Restaurant</strong> — Renewed Trade License or DED renewal receipt · Expires 30 Apr 2026 (~22 days) · Contact operator this week<br>5. <strong>Sky Pool Cafe &amp; Restaurant</strong> — Renewed Trade License · Expires 25 May 2026 (~47 days) · Confirm renewal in progress before any drawdown<br>6. <strong>Cloud Fifty One</strong> — Renewed Trade License (expires 25 May 2026) + Renewed Tenancy Agreement (expires 30 Sep 2026) · Both documents required before aggressive tier<br>7. <strong>Hanu Restaurant</strong> — Renewed Trade License · Expires 19 Jun 2026 (~71 days) · Confirm before credit process is finalised to avoid expiring mid-process</div>
+</div>
+</div>
+<script>
+const score=85.5, b=document.getElementById('comp');
+const g={90:'linear-gradient(135deg,#003d22,#00a055,#00c86e)',80:'linear-gradient(135deg,#1d5c3a,#27ae60,#2ecc71)',70:'linear-gradient(135deg,#1a4a44,#3aada0,#52c8b0)',60:'linear-gradient(135deg,#3d3200,#a08000,#d4a800)',55:'linear-gradient(135deg,#3d2000,#b06000,#e08800)',50:'linear-gradient(135deg,#3d1400,#a04000,#d45a00)',0:'linear-gradient(135deg,#3d0a0a,#8a1a1a,#d43030)'};
+for(const t of [90,80,70,60,55,50,0]){if(score>=t){b.style.background=g[t];break}}
+</script>
+</body>
+</html>

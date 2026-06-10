@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import CaseSearchBox from "./_components/CaseSearchBox";
 import DashboardControls from "./_components/DashboardControls";
+import DashboardModal from "./_components/DashboardModal";
 import DashboardTabs from "./_components/DashboardTabs";
 import RegionBadge from "./_components/RegionBadge";
 import { filterCasesByQuery } from "./_lib/caseSearch";
@@ -384,6 +385,7 @@ export default function Dashboard() {
   const [mutationError, setMutationError] = useState("");
   const [savingFields, setSavingFields] = useState({});
   const [auditStamps, setAuditStamps] = useState({});
+  const [dashboardFrame, setDashboardFrame] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -706,6 +708,7 @@ export default function Dashboard() {
                   const statusSaving = registeredGroup ? !!savingFields[fieldKey(registeredGroup.id, "case_status")] : false;
                   const regionSaving = groupFieldSaving(rows, savingFields, "region");
                   const registryRegionSaving = registeredGroup ? !!savingFields[fieldKey(registeredGroup.id, "region")] : false;
+                  const dashboardGroupId = registeredGroup?.id || key;
 
                   return (
                     <Fragment key={key}>
@@ -762,6 +765,18 @@ export default function Dashboard() {
                           )}
                         </td>
                         <td style={td}>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              className="mz-clickable"
+                              onClick={() => setDashboardFrame({
+                                title: `${group} Group Dashboard`,
+                                url: `/api/dashboards/group/${encodeURIComponent(dashboardGroupId)}`,
+                              })}
+                              style={{ ...smallAction, cursor: "pointer" }}
+                            >
+                              Dashboard
+                            </button>
                           <Link
                             className="mz-clickable"
                             href={`/new-case?group_name=${encodeURIComponent(group)}&region=${encodeURIComponent(groupRegion)}`}
@@ -769,6 +784,7 @@ export default function Dashboard() {
                           >
                             Add venue
                           </Link>
+                          </div>
                         </td>
                       </tr>
 
@@ -830,9 +846,22 @@ export default function Dashboard() {
                               />
                             </td>
                             <td style={td}>
-                              <Link className="mz-clickable" href={`/cases/${c.id}`} style={smallAction}>
-                                Open
-                              </Link>
+                              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  className="mz-clickable"
+                                  onClick={() => setDashboardFrame({
+                                    title: `${caseVenue(c)} Risk Dashboard`,
+                                    url: `/api/dashboards/venue/${c.id}`,
+                                  })}
+                                  style={{ ...smallAction, cursor: "pointer" }}
+                                >
+                                  Dashboard
+                                </button>
+                                <Link className="mz-clickable" href={`/cases/${c.id}`} style={smallAction}>
+                                  Open
+                                </Link>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -871,6 +900,11 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      <DashboardModal
+        title={dashboardFrame?.title || "Risk Dashboard"}
+        url={dashboardFrame?.url || ""}
+        onClose={() => setDashboardFrame(null)}
+      />
     </div>
   );
 }
