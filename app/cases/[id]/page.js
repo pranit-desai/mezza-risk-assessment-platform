@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import StatusBadge from "../../_components/StatusBadge";
+import {
+  buildDocumentItems,
+  documentStatusLabel,
+  documentStatusTone,
+  formatDocumentDate,
+} from "../../_lib/documentWorkflow";
 
 function fm(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
@@ -59,6 +65,105 @@ function KpiCard({ label, value, sub, color, danger, mono }) {
   );
 }
 
+function DocumentAlertStrip({ items, error }) {
+  const alertItems = items.filter((item) => (
+    item.pendingRequest ||
+    item.providedVisible ||
+    item.expiryStatus === "missing" ||
+    item.expiryStatus === "expired" ||
+    item.expiryStatus === "expiring"
+  ));
+
+  return (
+    <div
+      className="mz-card"
+      style={{
+        marginBottom: 14,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 14,
+        flexWrap: "wrap",
+      }}
+    >
+      <div style={{ minWidth: 220 }}>
+        <div className="mz-eyebrow">Document Expiry</div>
+        <div style={{ color: "var(--mz-muted)", fontSize: "var(--mz-fs-xs)", marginTop: 4 }}>
+          90-day cap window / 7-day renewal warning
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flex: 1, flexWrap: "wrap" }}>
+        {error && <DocumentChip label={error} tone="amber" />}
+        {!error && alertItems.length === 0 && <DocumentChip label="Required docs clear" tone="green" />}
+        {alertItems.map((item) => (
+          <DocumentChip
+            key={`${item.caseId}:${item.documentType}`}
+            label={`${item.label}: ${documentSummary(item)}`}
+            tone={documentStatusTone(item)}
+          />
+        ))}
+      </div>
+
+      <Link href="/banking" className="mz-clickable" style={{ padding: "8px 12px" }}>
+        Open Documents
+      </Link>
+    </div>
+  );
+}
+
+function DocumentChip({ label, tone }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        minHeight: 30,
+        padding: "5px 9px",
+        borderRadius: 8,
+        background: toneBackground(tone),
+        border: `1px solid ${toneBorder(tone)}`,
+        color: toneColor(tone),
+        fontSize: "var(--mz-fs-xs)",
+        fontWeight: 800,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function documentSummary(item) {
+  if (item.providedVisible) return "provided";
+  if (item.pendingRequest) return "pending";
+  if (!item.expiryDate) return documentStatusLabel(item);
+  if (item.daysToExpiry < 0) return `expired ${formatDocumentDate(item.expiryDate)}`;
+  if (item.daysToExpiry <= 7) return `expires in ${item.daysToExpiry}d`;
+  if (item.daysToExpiry <= 90) return `cap window ${formatDocumentDate(item.expiryDate)}`;
+  return documentStatusLabel(item);
+}
+
+function toneBackground(tone) {
+  if (tone === "green") return "var(--mz-green-bg)";
+  if (tone === "red") return "var(--mz-red-bg)";
+  if (tone === "amber") return "var(--mz-amber-bg)";
+  return "rgba(255,255,255,0.04)";
+}
+
+function toneBorder(tone) {
+  if (tone === "green") return "var(--mz-green-border)";
+  if (tone === "red") return "var(--mz-red-border)";
+  if (tone === "amber") return "var(--mz-amber-border)";
+  return "var(--mz-border-input)";
+}
+
+function toneColor(tone) {
+  if (tone === "green") return "var(--mz-green-text)";
+  if (tone === "red") return "var(--mz-red-text)";
+  if (tone === "amber") return "var(--mz-amber-text)";
+  return "var(--mz-muted)";
+}
+
 export default function CaseOverviewPage() {
   const params = useParams();
   const caseId = params?.id;
@@ -67,15 +172,27 @@ export default function CaseOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [documentBundle, setDocumentBundle] = useState({ documents: [], requests: [] });
+  const [documentError, setDocumentError] = useState("");
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch(`/api/cases/${caseId}`, { cache: "no-store" });
+      setDocumentError("");
+      const [res, documentsRes] = await Promise.all([
+        fetch(`/api/cases/${caseId}`, { cache: "no-store" }),
+        fetch(`/api/cases/${caseId}/documents`, { cache: "no-store" }),
+      ]);
       if (!res.ok) throw new Error(`Failed to fetch case: ${res.status}`);
       const data = await res.json();
       setCaseData(data);
+      if (documentsRes.ok) {
+        setDocumentBundle(await documentsRes.json());
+      } else {
+        setDocumentBundle({ documents: [], requests: [] });
+        setDocumentError(`Documents unavailable: ${documentsRes.status}`);
+      }
     } catch (err) {
       setError(err.message || "Failed to load case");
     } finally {
@@ -158,6 +275,11 @@ export default function CaseOverviewPage() {
   }
 
   const crossChecks = caseData.extracted_json?.cross_checks || {};
+  const documentItems = buildDocumentItems(
+    caseData,
+    documentBundle?.documents || [],
+    documentBundle?.requests || []
+  );
   return (
     <div style={{ padding: "28px 24px" }}>
       <Link
@@ -191,6 +313,8 @@ export default function CaseOverviewPage() {
           {caseData.group_name} · {caseData.location} · {caseData.concept || "—"}
         </div>
       </div>
+
+      <DocumentAlertStrip items={documentItems} error={documentError} />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 14 }}>
         <KpiCard

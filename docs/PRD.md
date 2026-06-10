@@ -193,6 +193,8 @@ Add a daily document expiry monitoring feature.
 
 Mezza should know which client documents are expiring soon and be able to request replacements before underwriting or compliance risk emerges.
 
+The current cap window starts 90 days before a required document expires. The final 7 days before expiry should be treated as a direct renewal warning.
+
 ### 10.2 Expiry List
 
 Create a list similar to a Vercel deployments list:
@@ -203,6 +205,7 @@ Create a list similar to a Vercel deployments list:
 - expiry date
 - days remaining
 - status
+- market rule set: UAE or USA
 
 ### 10.3 Actions
 
@@ -210,6 +213,7 @@ For each expiring document, user can:
 
 - request updated document
 - upload replacement document
+- store the request email draft
 - mark no longer needed
 - close item
 - keep pending
@@ -223,6 +227,8 @@ Document expiry items should be organized into:
 - replaced/uploaded
 - closed
 - no longer needed
+
+Initial implementation note: active Banking/Documents buckets use Expired, Expiring, Pending Documents Requested, and Provided Documents. Provided requests remain visible for 7 days after proof upload and remain stored/audited after they disappear from the active bucket.
 
 ### 10.5 Email Drafting
 
