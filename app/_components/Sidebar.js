@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "D", matches: ["/", "/cases", "/analytics"] },
   { href: "/new-case", label: "New Case", icon: "N" },
   { href: "/banking", label: "Banking", icon: "B" },
-  { href: "/documents", label: "Documents", icon: "Dc" },
+  { href: "/documents", label: "Documents", icon: "DOC" },
 ];
 
 export default function Sidebar() {
@@ -104,6 +104,8 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              title={item.label}
+              aria-label={item.label}
               className={`mz-clickable ${active ? "active" : ""}`}
               style={{
                 display: "flex",
@@ -117,7 +119,7 @@ export default function Sidebar() {
                 className="mz-mono"
                 style={{
                   fontSize: 12,
-                  width: 20,
+                  width: 28,
                   height: 20,
                   textAlign: "center",
                   lineHeight: "20px",

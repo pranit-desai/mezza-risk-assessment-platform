@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import CaseSearchBox from '../_components/CaseSearchBox';
 import { filterCasesByQuery } from '../_lib/caseSearch';
+import {
+  bucketDocumentItems,
+  buildDocumentItems,
+} from '../_lib/documentWorkflow';
 
 const th = {
   padding: '11px 14px',
@@ -61,6 +65,8 @@ export default function BankingPageClient({
   connections,
   accounts,
   transactions,
+  documents,
+  documentRequests,
   error,
 }) {
   const [query, setQuery] = useState('');
@@ -103,6 +109,15 @@ export default function BankingPageClient({
 
   const connectedCount = connections.filter((conn) => conn.status === 'connected').length;
   const activeAccounts = accounts.filter((account) => account.status === 'active').length;
+  const documentBuckets = useMemo(() => {
+    const items = cases.flatMap((c) => buildDocumentItems(c, documents, documentRequests));
+    return bucketDocumentItems(items);
+  }, [cases, documents, documentRequests]);
+  const actionRequiredCount =
+    documentBuckets.missing.length +
+    documentBuckets.expired.length +
+    documentBuckets.expiring.length +
+    documentBuckets.pending.length;
 
   return (
     <div style={{ padding: '28px 24px', color: 'var(--mz-text-on-page)' }}>
@@ -125,6 +140,38 @@ export default function BankingPageClient({
           Failed to load some banking data: {error}
         </Alert>
       )}
+
+      <section className="mz-card" style={{ margin: '18px 0', padding: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            padding: '16px 18px',
+            borderBottom: '1px solid var(--mz-border-soft)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div>
+            <div className="mz-eyebrow">Documents</div>
+            <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)', marginTop: 5 }}>
+              Required document monitor: missing, expired, 90-day cap window, pending requests, and uploaded proof.
+            </div>
+          </div>
+          <Link href="/documents" className="mz-clickable" style={{ padding: '8px 12px', display: 'inline-flex' }}>
+            Open Documents
+          </Link>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
+          <DocumentMetric label="Action Required" value={actionRequiredCount} tone={actionRequiredCount ? 'amber' : 'green'} />
+          <DocumentMetric label="Missing" value={documentBuckets.missing.length} tone="red" />
+          <DocumentMetric label="Expired" value={documentBuckets.expired.length} tone="red" />
+          <DocumentMetric label="Expiring" value={documentBuckets.expiring.length} tone="amber" />
+          <DocumentMetric label="Pending" value={documentBuckets.pending.length} tone="amber" />
+          <DocumentMetric label="Provided" value={documentBuckets.provided.length} tone="green" />
+        </div>
+      </section>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, marginBottom: 18 }}>
         <SummaryTile label="Connected Cases" value={connectedCount} />
@@ -240,6 +287,17 @@ function SummaryTile({ label, value }) {
   );
 }
 
+function DocumentMetric({ label, value, tone }) {
+  return (
+    <div style={{ padding: '12px 14px', borderRight: '1px solid var(--mz-border-soft)' }}>
+      <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' }}>{label}</div>
+      <div className="mz-mono" style={{ marginTop: 5, fontSize: 24, fontWeight: 900, color: toneColor(tone) }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({ value }) {
   const active = value === 'connected';
   return (
@@ -277,6 +335,13 @@ function Alert({ tone, children }) {
   );
 }
 
+function toneColor(tone) {
+  if (tone === 'green') return 'var(--mz-green-text)';
+  if (tone === 'red') return 'var(--mz-red-text)';
+  if (tone === 'amber') return 'var(--mz-amber-text)';
+  return 'var(--mz-muted)';
+}
+
 function toneBackground(tone) {
   if (tone === 'green') return 'var(--mz-green-bg)';
   if (tone === 'red') return 'var(--mz-red-bg)';
@@ -289,11 +354,4 @@ function toneBorder(tone) {
   if (tone === 'red') return 'var(--mz-red-border)';
   if (tone === 'amber') return 'var(--mz-amber-border)';
   return 'var(--mz-border-input)';
-}
-
-function toneColor(tone) {
-  if (tone === 'green') return 'var(--mz-green-text)';
-  if (tone === 'red') return 'var(--mz-red-text)';
-  if (tone === 'amber') return 'var(--mz-amber-text)';
-  return 'var(--mz-muted)';
 }
