@@ -82,10 +82,12 @@ export default function DocumentsPageClient({
         if (!res.ok) throw new Error(body.error || `Request failed: ${res.status}`);
         updateBundle(caseId, body);
         if (body.draft) {
+          const caseRow = casesById.get(caseId);
           drafts.push({
             caseId,
-            caseRef: casesById.get(caseId)?.case_ref || caseId.slice(0, 8),
-            venueName: caseItems[0]?.venueName || casesById.get(caseId)?.venue_name || 'Venue',
+            caseRef: caseRow?.case_ref || caseId.slice(0, 8),
+            venueName: caseItems[0]?.venueName || caseRow?.venue_name || 'Venue',
+            recipient: recipientEmail(caseRow),
             ...body.draft,
           });
         }
@@ -375,9 +377,18 @@ function MailDraft({ draft }) {
           <div className="mz-eyebrow">Mail Draft</div>
           <div style={{ marginTop: 4, fontWeight: 800 }}>{draft.venueName}</div>
         </div>
-        <a className="mz-clickable" href={mailtoHref(draft)} style={{ padding: '7px 10px' }}>
-          Open Mail
+        <a
+          className="mz-clickable active"
+          href={gmailComposeHref(draft)}
+          target="_blank"
+          rel="noreferrer"
+          style={{ padding: '7px 10px' }}
+        >
+          Open in Gmail
         </a>
+      </div>
+      <div style={{ marginTop: 8, color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' }}>
+        To: {draft.recipient || 'add recipient in Gmail'}
       </div>
       <div className="mz-mono" style={{ marginTop: 10, fontSize: 'var(--mz-fs-xs)', color: 'var(--mz-muted)' }}>
         {draft.subject}
@@ -443,8 +454,33 @@ function expiryText(item) {
   return `${formatDocumentDate(item.expiryDate)} (${days}d)`;
 }
 
-function mailtoHref(draft) {
-  return `mailto:?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
+function gmailComposeHref(draft) {
+  const params = new URLSearchParams({
+    view: 'cm',
+    fs: '1',
+    su: draft.subject || '',
+    body: draft.body || '',
+  });
+  if (draft.recipient) params.set('to', draft.recipient);
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}
+
+function recipientEmail(caseRow) {
+  const candidates = [
+    caseRow?.commercial_poc,
+    caseRow?.borrower_email,
+    caseRow?.contact_email,
+    caseRow?.email,
+    caseRow?.extracted_json?.profile?.email,
+    caseRow?.extracted_json?.ownership?.email,
+    caseRow?.extracted_json?.contact?.email,
+  ];
+  return candidates.map(extractEmail).find(Boolean) || '';
+}
+
+function extractEmail(value) {
+  const match = String(value || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match?.[0] || '';
 }
 
 function toneBackground(tone) {
