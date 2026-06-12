@@ -78,13 +78,25 @@ One action item for Pranit before local dev works fully — see PENDING.
 
 ## 4. PENDING / BLOCKED
 
-### SUPABASE_SERVICE_ROLE_KEY missing from .env.local — action required by Pranit
+**Resume: Tue Jun 16**
 
-`lib/supabaseAdmin.js` throws `SUPABASE_SERVICE_ROLE_KEY is not set` if this env var is absent. Every server-side API route that uses `supabaseAdmin` will fail locally.
+### 1. Add SUPABASE_SERVICE_ROLE_KEY to .env.local (local dev)
 
-**Action:** Copy the value from Vercel dashboard → Project → Settings → Environment Variables and add to `.env.local`. Do not commit it. Once added, restart the dev server and `/scoring-bands` will show "Password: Server-side".
+`lib/supabaseAdmin.js` throws `SUPABASE_SERVICE_ROLE_KEY is not set` if this env var is absent — every server-side route fails locally. The value is already in Vercel production.
 
-The value is already set correctly in Vercel production — this is local-only.
+**Action:** Copy from Vercel dashboard → Project → Settings → Environment Variables → add to `.env.local`. Do not commit it. Restart dev server; `/scoring-bands` will then show "Password: Server-side".
+
+### 2. Visit /seasonality once to trigger auto-seed (29 patterns + 280 rows)
+
+The three seasonality tables exist but are empty. `loadSeasonalityBundle()` auto-seeds from `SEASONALITY_SEED` (29 UAE patterns + 1 USA baseline, 23 venue records, 280 monthly rows) on the first call when tables are empty. This fires the first time `/seasonality` is loaded in a browser.
+
+**Action:** Log in, visit `/seasonality`. Confirm the page shows pattern and venue data. No code change needed.
+
+### 3. Diagnose /groups/new 500 error before adding new cases
+
+`/groups/new` form submission returns "Failed to create group" (500). Most likely cause: `created_by` FK violation — the route inserts with `created_by: user.id` referencing `public.users(id)`, but if the auth user has no matching row in `public.users`, Postgres throws error 23503. Confirm by pulling Vercel function logs for `/api/groups` POST and checking the actual Postgres error code.
+
+**Action:** Check Vercel runtime logs for `/api/groups`, identify error code, fix before onboarding new groups.
 
 ### SCORING_BANDS_PASSWORD_SHA256 — done
 Added to `.env.local` (hash `d764de4f…`). Vercel production already had it. No further action needed.
