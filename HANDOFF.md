@@ -1,11 +1,121 @@
 # HANDOFF.md — Mezza Risk Assessment Platform
 
+> **Instruction for all AI agents:** Update this file after every meaningful unit of work and commit it alongside the code. If a session is interrupted, this file must be enough for a fresh agent to resume without re-reading the full conversation.
+
 This document is a bridge for any AI coding tool picking up work on this codebase. It supplements the two canonical reference files:
 
 - **`AGENTS.md`** — product context, business rules, conventions. Read this first, in full.
 - **`SCORING_MODEL.md`** — the Mezza UAE scoring bands. Reference when implementing scoring logic.
 
-This file adds what isn't in those two: where the build is right now, the architectural decisions made in earlier conversations, and the remaining phase-by-phase work with paste-ready prompts.
+---
+
+## 1. CURRENT STATE
+
+- **Branch:** `codex/supabase-case-spine-summary`
+- **Last commit:** `1c60edf` (`feat(seasonality): add dynamic seasonality library`)
+- **Supabase project:** `pplcwqllhjtzkjqekvyd` (mezza-platform, ap-south-1, ACTIVE_HEALTHY)
+- **Vercel project:** `prj_VABEuPQGpn3RleTEWX39pnmEZhmm` (team: pranit-7973s-projects)
+- **Live case:** Hikari / Sushi Tokyo Miami LLC (`MZA-2026-001`) — **must not be touched**
+
+### What works
+- All core tables exist: `cases`, `groups`, `venues`, `disbursements`, `documents`, `document_requests`, `audit_log`, `users`, `group_lending_settings`, `connections`, `fc_accounts`, `fc_transactions`, `webhook_events`
+- Stripe FC integration complete (Parts 1–5)
+- Document renewal request workflow complete
+- `lib/seasonalityStore.js` degrades gracefully when seasonality tables are missing (catches error codes `42P01` / `PGRST204` → returns `fallbackSeasonalityBundle`)
+
+### What was NOT yet applied when this session started (migration reconciliation in progress)
+- `scoring_policies` table — migration written, not applied to DB
+- `seasonality_patterns`, `seasonality_venues`, `seasonality_venue_months` — migration written, not applied
+- `on_hold` status value — missing from `cases_status_check` constraint
+- `venues_group_region_fk` — non-deferrable (migration 20260609061000 not applied)
+
+---
+
+## 2. IN PROGRESS
+
+All tasks from the handoff queue are complete. Branch is clean and pushed.
+Next: Pranit to add `SCORING_BANDS_PASSWORD` to Vercel + `.env.local` (see PENDING).
+
+---
+
+## 3. COMPLETED THIS SESSION
+
+| When | Work item |
+|---|---|
+| Session start | Verified MCP connectivity: Supabase ✅ Vercel ✅ |
+| Task 1 | Audited 8 migration files vs. ledger + actual DB — found 5 not in ledger |
+| Task 1 | Confirmed `scoring_policies` + `seasonality_*` tables do NOT exist in DB |
+| Task 1 | Confirmed `on_hold` status missing from `cases_status_check` |
+| Task 1 | Confirmed `seasonalityStore.js` already degrades gracefully (Task 3 ✅ — no code change needed) |
+| Task 4 | Confirmed `SCORING_BANDS_PASSWORD` absent from `.env.local` and not visible in Vercel project config — logged under PENDING |
+| Task 2 | Registered `20260608000000` retroactively in Supabase ledger |
+| Task 2 | Registered `20260609112500` retroactively in Supabase ledger |
+| Task 2 | Applied `20260609061000` — `on_hold` added to constraint, `venues_group_region_fk` made DEFERRABLE INITIALLY IMMEDIATE |
+| Task 2 | Applied `20260612110000` — `scoring_policies` table created, RLS enabled |
+| Task 2 | Applied `20260612123000` — `seasonality_patterns`, `seasonality_venues`, `seasonality_venue_months` created, RLS enabled |
+| Task 2 | Verified all 4 new tables, all indexes, constraint, deferrable FK — all correct |
+| Task 2 | Verified Hikari (MZA-2026-001): score 76.36, grade B+, ceiling 84,942.24 USD — untouched ✅ |
+| Task 3 | `seasonalityStore.js` already has graceful degradation — no code change needed ✅ |
+| Task 4 | `SCORING_BANDS_PASSWORD` absent from Vercel + `.env.local` — logged under PENDING |
+| Task 5 | `npm run lint` ✅ no errors; `npm run build` ✅ 17 pages, 0 errors |
+
+---
+
+## 4. PENDING / BLOCKED
+
+### SCORING_BANDS_PASSWORD — action required by Pranit
+
+`/api/scoring-bands/route.js` checks for `SCORING_BANDS_PASSWORD` or `SCORING_BANDS_PASSWORD_SHA256`. Neither is set in `.env.local` or Vercel. The route returns HTTP 503 and the scoring-bands page shows password as unconfigured.
+
+**Action:** Add one of these to Vercel Production env vars and to `.env.local` (never commit the value).
+
+---
+
+## 5. KNOWN ISSUES
+
+| # | Issue | Status |
+|---|---|---|
+| 1 | `SCORING_BANDS_PASSWORD` not configured in Vercel or `.env.local` | Open — see PENDING |
+| 2 | `/groups/new` form → generic 500 "Failed to create group" (FK violation or wrong Supabase client) | Open from prior Codex session |
+| 3 | `/api/fc/session` was fragile in live mode | Resolved (Stripe keys added to Vercel) |
+| 4 | `/connect` page WCAG contrast `#8a817a` | Resolved (`--mz-text-subtle` token added) |
+| 5 | No case-creation UI (`/cases/new`) | Open — known gap |
+| 6 | `mezza_databank.py` not integrated | Open — known gap, Phase 9 |
+
+---
+
+## 6. VERIFICATION STATUS
+
+| Check | Result |
+|---|---|
+| `npm run lint` | Not yet run this session |
+| `npm run build` | Not yet run this session |
+| `scoring_policies` table applied | ✅ RLS enabled, index created |
+| `seasonality_*` tables applied | ✅ All 3 tables, RLS enabled, all indexes created |
+| `on_hold` status in constraint | ✅ Confirmed in `cases_status_check` |
+| `venues_group_region_fk` deferrable | ✅ `condeferrable=true`, `condeferred=false` |
+| Hikari case integrity | ✅ score 76.36, B+, 84,942.24 USD — untouched |
+| `npm run lint` | ✅ No errors |
+| `npm run build` | ✅ Clean — 17 pages compiled, 0 errors |
+
+---
+
+## MIGRATION STATE REFERENCE
+
+| Migration | In ledger | Tables exist | Status |
+|---|---|---|---|
+| `20260608000000` phase1_groups_venues_disbursements_documents | ✅ registered | ✅ | Retroactively registered this session |
+| `20260609061000` on_hold_and_group_region_update | ✅ | ✅ | Applied this session |
+| `20260609112500` reconcile_legacy_schema_for_case_spine | ✅ | ✅ | Retroactively registered this session |
+| `20260609153500` add_group_case_status | ✅ | ✅ | Was in ledger |
+| `20260609154500` backfill_case_groups_for_summary | ✅ | ✅ | Was in ledger |
+| `20260610110000` document_renewal_requests | ✅ | ✅ | Was in ledger |
+| `20260612110000` scoring_policies | ✅ | ✅ | Applied this session |
+| `20260612123000` seasonality_library | ✅ | ✅ | Applied this session |
+
+---
+
+## HISTORICAL CONTEXT (from prior sessions)
 
 ---
 
