@@ -37,6 +37,7 @@ export default function DocumentsPageClient({
   const [mailDrafts, setMailDrafts] = useState([]);
   const [uploadDrafts, setUploadDrafts] = useState({});
   const [uploadingKey, setUploadingKey] = useState('');
+  const [movingBackKey, setMovingBackKey] = useState('');
 
   const visibleCases = useMemo(() => filterCasesByQuery(cases, query), [cases, query]);
 
@@ -142,6 +143,34 @@ export default function DocumentsPageClient({
     }
   }
 
+  async function moveRequestBack(item) {
+    const requestId = item.pendingRequest?.id;
+    if (!requestId) return;
+
+    const key = itemKey(item);
+    setMovingBackKey(key);
+    setDocumentMessage('');
+    try {
+      const res = await fetch(`/api/cases/${item.caseId}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'cancel_document_request',
+          request_id: requestId,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `Move back failed: ${res.status}`);
+      updateBundle(item.caseId, body);
+      patchUploadDraft(key, { open: false, file: null, expiryDate: '', notes: '' });
+      setDocumentMessage(`${item.label} moved back to ${bucketLabel(item)} for ${item.caseRef}.`);
+    } catch (err) {
+      setDocumentMessage(err.message || 'Move back failed.');
+    } finally {
+      setMovingBackKey('');
+    }
+  }
+
   return (
     <div style={{ padding: '28px 24px', color: 'var(--mz-text-on-page)' }}>
       <h1 style={{ fontSize: 'var(--mz-fs-h1)', fontWeight: 900, margin: 0 }}>
@@ -228,8 +257,10 @@ export default function DocumentsPageClient({
             items={documentBuckets.pending}
             uploadDrafts={uploadDrafts}
             uploadingKey={uploadingKey}
+            movingBackKey={movingBackKey}
             onPatchUploadDraft={patchUploadDraft}
             onUpload={uploadProof}
+            onMoveBack={moveRequestBack}
             pending
           />
           <DocumentBucket title="Provided Documents" items={documentBuckets.provided} provided />
@@ -256,8 +287,10 @@ function DocumentBucket({
   onRequest,
   uploadDrafts,
   uploadingKey,
+  movingBackKey,
   onPatchUploadDraft,
   onUpload,
+  onMoveBack,
   pending,
   provided,
 }) {
@@ -310,6 +343,22 @@ function DocumentBucket({
                   style={{ marginTop: 10, padding: '6px 10px' }}
                 >
                   Request
+                </button>
+              )}
+
+              {pending && onMoveBack && (
+                <button
+                  className="mz-clickable"
+                  onClick={() => onMoveBack(item)}
+                  disabled={movingBackKey === key}
+                  style={{
+                    marginTop: 10,
+                    padding: '6px 10px',
+                    opacity: movingBackKey === key ? 0.6 : 1,
+                    cursor: movingBackKey === key ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {movingBackKey === key ? 'Moving back...' : `Move back to ${bucketLabel(item)}`}
                 </button>
               )}
 
@@ -452,6 +501,13 @@ function expiryText(item) {
   if (days < 0) return `${formatDocumentDate(item.expiryDate)} (${Math.abs(days)}d expired)`;
   if (days === 0) return `${formatDocumentDate(item.expiryDate)} (today)`;
   return `${formatDocumentDate(item.expiryDate)} (${days}d)`;
+}
+
+function bucketLabel(item) {
+  if (item.expiryStatus === 'missing') return 'Missing';
+  if (item.expiryStatus === 'expired') return 'Expired';
+  if (item.expiryStatus === 'expiring') return 'Expiring';
+  return 'Documents';
 }
 
 function gmailComposeHref(draft) {

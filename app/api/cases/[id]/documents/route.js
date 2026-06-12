@@ -140,6 +140,9 @@ export async function POST(request, { params }) {
   if (body?.action === 'request_documents') {
     return requestDocuments(caseData, body, authUser, publicUser);
   }
+  if (body?.action === 'cancel_document_request') {
+    return cancelDocumentRequest(caseData, body, authUser, publicUser);
+  }
 
   return NextResponse.json({ error: 'Unsupported document action' }, { status: 400 });
 }
@@ -369,6 +372,96 @@ async function uploadProvidedDocument(request, caseData, authUser, publicUser) {
   }
 }
 
+async function cancelDocumentRequest(caseData, body, authUser, publicUser) {
+  const requestId = String(body?.request_id || '').trim();
+  if (!UUID_RE.test(requestId)) {
+    return NextResponse.json({ error: 'request_id is required' }, { status: 400 });
+  }
+
+  const { data: pendingRequest, error: lookupError } = await supabaseAdmin
+    .from('document_requests')
+    .select('*')
+    .eq('id', requestId)
+    .eq('case_id', caseData.id)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (lookupError) {
+    logSupabaseError('Pending document request lookup failed', lookupError, {
+      caseId: caseData.id,
+      requestId,
+      authUserId: authUser.id,
+      publicUserId: publicUser.id,
+    });
+    return NextResponse.json({ error: 'Failed to find pending document request' }, { status: 500 });
+  }
+  if (!pendingRequest) {
+    return NextResponse.json({ error: 'Pending document request not found' }, { status: 404 });
+  }
+
+  const region = normalizeDocumentRegion(caseData.region);
+  const documentType = canonicalDocumentType(pendingRequest.document_type, region);
+  const now = new Date().toISOString();
+  const { error: updateRequestError } = await supabaseAdmin
+    .from('document_requests')
+    .update({
+      status: 'not_needed',
+      notes: appendNote(pendingRequest.notes, `Request moved back by ${publicUser.email || authUser.email || publicUser.id} on ${now}.`),
+    })
+    .eq('id', pendingRequest.id)
+    .eq('case_id', caseData.id)
+    .eq('status', 'pending');
+
+  if (updateRequestError) {
+    logSupabaseError('Document request cancel failed', updateRequestError, {
+      caseId: caseData.id,
+      documentType,
+      requestId,
+      authUserId: authUser.id,
+      publicUserId: publicUser.id,
+    });
+    return NextResponse.json({ error: 'Failed to move document request back' }, { status: 500 });
+  }
+
+  const { error: documentUpdateError } = await supabaseAdmin
+    .from('documents')
+    .update({ renewal_status: null, updated_by: publicUser.id })
+    .eq('case_id', caseData.id)
+    .eq('document_type', documentType)
+    .eq('renewal_status', 'pending');
+
+  if (documentUpdateError) {
+    logSupabaseError('Document renewal status reset failed', documentUpdateError, {
+      caseId: caseData.id,
+      documentType,
+      requestId,
+      authUserId: authUser.id,
+      publicUserId: publicUser.id,
+    });
+  }
+
+  await insertDocumentAuditRows({
+    caseId: caseData.id,
+    items: [{ documentType }],
+    fieldSuffix: 'request_moved_back',
+    oldValue: {
+      request_id: pendingRequest.id,
+      status: 'pending',
+    },
+    newValue: {
+      request_id: pendingRequest.id,
+      status: 'not_needed',
+    },
+    changedBy: publicUser.email || publicUser.id,
+  });
+
+  try {
+    return NextResponse.json(await fetchBundle(caseData));
+  } catch (err) {
+    return NextResponse.json({ error: err.message || 'Document request moved back but refresh failed' }, { status: 500 });
+  }
+}
+
 async function latestPendingRequest(caseId, documentType) {
   const { data, error } = await supabaseAdmin
     .from('document_requests')
@@ -429,6 +522,12 @@ function normalizeDate(value) {
   const text = String(value || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
   return text;
+}
+
+function appendNote(current, note) {
+  const base = String(current || '').trim();
+  if (!base) return note;
+  return `${base}\n${note}`;
 }
 
 function safeFilename(filename) {

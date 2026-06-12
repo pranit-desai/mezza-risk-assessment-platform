@@ -159,8 +159,8 @@ export function actionableDocumentItems(items) {
 export function bucketDocumentItems(items) {
   return {
     missing: items.filter((item) => item.expiryStatus === 'missing' && !item.pendingRequest && !item.providedVisible),
-    expired: items.filter((item) => item.expiryStatus === 'expired' && !item.providedVisible),
-    expiring: items.filter((item) => item.expiryStatus === 'expiring' && !item.providedVisible),
+    expired: items.filter((item) => item.expiryStatus === 'expired' && !item.pendingRequest && !item.providedVisible),
+    expiring: items.filter((item) => item.expiryStatus === 'expiring' && !item.pendingRequest && !item.providedVisible),
     pending: items.filter((item) => item.pendingRequest),
     provided: items.filter((item) => item.providedVisible),
   };
