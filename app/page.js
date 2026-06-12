@@ -8,6 +8,7 @@ import DashboardModal from "./_components/DashboardModal";
 import DashboardTabs from "./_components/DashboardTabs";
 import RegionBadge from "./_components/RegionBadge";
 import { filterCasesByQuery } from "./_lib/caseSearch";
+import { gradeForScore } from "./_lib/scoringPolicy";
 import {
   caseGroup,
   caseRegion,
@@ -68,16 +69,6 @@ function weightedScore(rows) {
   if (!totalRevenue) return null;
 
   return weightedRows.reduce((sum, row) => sum + row.score * row.revenue, 0) / totalRevenue;
-}
-
-function gradeForScore(score) {
-  const value = Number(score);
-  if (!Number.isFinite(value) || value <= 0) return "-";
-  if (value >= 80) return "A";
-  if (value >= 75) return "B+";
-  if (value >= 70) return "B";
-  if (value >= 65) return "C+";
-  return "NM";
 }
 
 function gradeColor(grade, score) {

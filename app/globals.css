@@ -269,6 +269,7 @@ a:active, a.active { color: var(--mz-accent); }
 input[type="text"],
 input[type="number"],
 input[type="date"],
+input[type="password"],
 select,
 textarea {
   background: var(--mz-card-nested);

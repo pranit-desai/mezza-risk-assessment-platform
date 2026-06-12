@@ -7,6 +7,7 @@ import DashboardControls from '../_components/DashboardControls';
 import DashboardTabs from '../_components/DashboardTabs';
 import StatusBadge from '../_components/StatusBadge';
 import { filterCasesByQuery } from '../_lib/caseSearch';
+import { gradeForScore } from '../_lib/scoringPolicy';
 import {
   caseGroup,
   caseRegion,
@@ -97,21 +98,11 @@ function regionSummary(cases, region) {
   };
 }
 
-function gradeBand(score) {
-  const value = Number(score);
-  if (!Number.isFinite(value) || value <= 0) return 'NM';
-  if (value >= 80) return 'A';
-  if (value >= 70) return 'B+';
-  if (value >= 60) return 'B';
-  if (value >= 50) return 'C';
-  return 'NM';
-}
-
 function scoreBandRows(cases) {
-  const order = ['A', 'B+', 'B', 'C', 'NM'];
+  const order = ['A', 'B+', 'B', 'C+', 'NM'];
   const counts = new Map(order.map((label) => [label, 0]));
   for (const c of cases) {
-    const label = gradeBand(c.score);
+    const label = gradeForScore(c.score);
     counts.set(label, (counts.get(label) || 0) + 1);
   }
   return order.map((label) => ({ label, count: counts.get(label) || 0 }));
