@@ -37,11 +37,13 @@ export default function ScoringBandsPageClient({
   const [password, setPassword] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [policyTextByRegion, setPolicyTextByRegion] = useState(() => policyTextMap(initialPolicies));
+  const [editSource, setEditSource] = useState('policy_editor');
   const [message, setMessage] = useState('');
   const [setupRequired, setSetupRequired] = useState(Boolean(initialSetupRequired));
   const [passwordConfigured, setPasswordConfigured] = useState(Boolean(initialPasswordConfigured));
   const [busy, setBusy] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [lockPromptOpen, setLockPromptOpen] = useState(false);
 
   const activeEntry = policies[activeRegion] || { policy: defaultPolicyForRegion(activeRegion), source: 'default' };
   const activePolicy = activeEntry.policy;
@@ -53,6 +55,8 @@ export default function ScoringBandsPageClient({
       return { policy: null, error: error.message };
     }
   }, [activeRegion, activeText]);
+
+  const isDirty = activeText !== prettyPolicy(activePolicy);
 
   async function refreshPolicies() {
     const res = await fetch('/api/scoring-bands', { cache: 'no-store' });
@@ -88,14 +92,15 @@ export default function ScoringBandsPageClient({
     }
   }
 
-  async function savePolicy() {
+  async function savePolicy(source) {
+    const resolvedSource = source || editSource;
     if (!unlocked) {
       setMessage('Unlock scoring bands before saving.');
-      return;
+      return false;
     }
     if (parsedDraft.error) {
       setMessage(`Policy JSON is invalid: ${parsedDraft.error}`);
-      return;
+      return false;
     }
     setBusy(true);
     setMessage('');
@@ -108,6 +113,7 @@ export default function ScoringBandsPageClient({
           region: activeRegion,
           password,
           policy: parsedDraft.policy,
+          source: resolvedSource,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -127,11 +133,13 @@ export default function ScoringBandsPageClient({
         ...current,
         [activeRegion]: prettyPolicy(body.policy),
       }));
-      setMessage(`${activeRegion} scoring bands saved to Supabase.`);
+      setMessage(`${activeRegion} scoring bands saved.`);
       await refreshPolicies();
+      return true;
     } catch (error) {
       if (String(error.message || '').includes('scoring_policies table')) setSetupRequired(true);
       setMessage(error.message || 'Save failed.');
+      return false;
     } finally {
       setBusy(false);
     }
@@ -142,7 +150,52 @@ export default function ScoringBandsPageClient({
       ...current,
       [activeRegion]: prettyPolicy(activePolicy),
     }));
+    setEditSource('policy_editor');
     setMessage(`${activeRegion} draft reset.`);
+  }
+
+  // Updates a single band field inline; mutates the parsed policy text so editor stays in sync.
+  function updateBandField(sectionIndex, categoryIndex, criterionIndex, bandIndex, field, value) {
+    setPolicyTextByRegion((current) => {
+      try {
+        const parsed = JSON.parse(current[activeRegion] || prettyPolicy(activePolicy));
+        parsed.sections[sectionIndex].categories[categoryIndex].criteria[criterionIndex].bands[bandIndex][field] = value;
+        return { ...current, [activeRegion]: prettyPolicy(parsed) };
+      } catch {
+        return current;
+      }
+    });
+    setEditSource('bands_inline');
+  }
+
+  function requestLock() {
+    if (isDirty) {
+      setLockPromptOpen(true);
+    } else {
+      executeLock('discard');
+    }
+  }
+
+  async function executeLock(choice) {
+    setLockPromptOpen(false);
+    if (choice === 'cancel') return;
+    if (choice === 'save') {
+      const saved = await savePolicy('policy_editor');
+      if (!saved) return;
+    }
+    setBusy(true);
+    try {
+      await fetch('/api/scoring-bands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'manual_lock', region: activeRegion, password }),
+      });
+    } catch { /* non-fatal */ }
+    setUnlocked(false);
+    setPassword('');
+    setEditSource('policy_editor');
+    setMessage('Scoring bands locked.');
+    setBusy(false);
   }
 
   return (
@@ -165,6 +218,7 @@ export default function ScoringBandsPageClient({
                 setActiveRegion(region);
                 setUnlocked(false);
                 setMessage('');
+                setLockPromptOpen(false);
               }}
               style={{ padding: '8px 13px' }}
             >
@@ -210,18 +264,31 @@ export default function ScoringBandsPageClient({
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Enter' && !unlocked && password) unlockEditing(); }}
                 placeholder="Scoring password"
                 autoComplete="current-password"
+                readOnly={unlocked}
               />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  className="mz-clickable active"
-                  onClick={unlockEditing}
-                  disabled={busy || !password}
-                  style={{ padding: '7px 10px', opacity: busy || !password ? 0.55 : 1 }}
-                >
-                  {busy ? 'Checking...' : 'Unlock'}
-                </button>
+                {!unlocked ? (
+                  <button
+                    className="mz-clickable active"
+                    onClick={unlockEditing}
+                    disabled={busy || !password}
+                    style={{ padding: '7px 10px', opacity: busy || !password ? 0.55 : 1 }}
+                  >
+                    {busy ? 'Checking...' : 'Unlock'}
+                  </button>
+                ) : (
+                  <button
+                    className="mz-clickable"
+                    onClick={requestLock}
+                    disabled={busy}
+                    style={{ padding: '7px 10px', opacity: busy ? 0.55 : 1, color: 'var(--mz-red-text)', borderColor: 'var(--mz-red-border)' }}
+                  >
+                    Lock
+                  </button>
+                )}
                 <button
                   className="mz-clickable"
                   onClick={refreshPolicies}
@@ -231,6 +298,24 @@ export default function ScoringBandsPageClient({
                   Refresh
                 </button>
               </div>
+              {lockPromptOpen && (
+                <div style={{ padding: 12, border: '1px solid var(--mz-amber-border)', borderRadius: 8, background: 'var(--mz-amber-bg)', display: 'grid', gap: 8 }}>
+                  <div style={{ color: 'var(--mz-amber-text)', fontSize: 'var(--mz-fs-xs)', fontWeight: 800 }}>
+                    You have unsaved changes. What would you like to do?
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button className="mz-clickable active" onClick={() => executeLock('save')} disabled={busy} style={{ padding: '6px 9px', fontSize: 'var(--mz-fs-xs)' }}>
+                      Save &amp; Lock
+                    </button>
+                    <button className="mz-clickable" onClick={() => executeLock('discard')} disabled={busy} style={{ padding: '6px 9px', fontSize: 'var(--mz-fs-xs)', color: 'var(--mz-red-text)' }}>
+                      Discard &amp; Lock
+                    </button>
+                    <button className="mz-clickable" onClick={() => executeLock('cancel')} style={{ padding: '6px 9px', fontSize: 'var(--mz-fs-xs)' }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
               <MetaGrid policy={activePolicy} row={activeEntry.row} />
             </div>
           </div>
@@ -259,10 +344,37 @@ export default function ScoringBandsPageClient({
               <span className="mz-eyebrow">Structured Bands</span>
               <div style={{ marginTop: 4, color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' }}>
                 {activePolicy.methodology}
+                {unlocked && isDirty && (
+                  <span style={{ marginLeft: 8, color: 'var(--mz-amber-text)' }}>· Unsaved changes</span>
+                )}
               </div>
             </div>
+            {unlocked && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="mz-clickable"
+                  onClick={resetDraft}
+                  disabled={busy || !isDirty}
+                  style={{ padding: '7px 10px', opacity: busy || !isDirty ? 0.45 : 1 }}
+                >
+                  Reset
+                </button>
+                <button
+                  className="mz-clickable active"
+                  onClick={() => savePolicy(editSource)}
+                  disabled={busy || Boolean(parsedDraft.error) || !isDirty}
+                  style={{ padding: '7px 10px', opacity: busy || parsedDraft.error || !isDirty ? 0.45 : 1 }}
+                >
+                  {busy ? 'Saving...' : 'Save Bands'}
+                </button>
+              </div>
+            )}
           </div>
-          <PolicySections sections={activePolicy.sections || []} />
+          <PolicySections
+            sections={activePolicy.sections || []}
+            unlocked={unlocked}
+            onBandChange={updateBandField}
+          />
           {activePolicy.capCriteria?.length > 0 && (
             <div style={{ padding: 18, borderTop: '1px solid var(--mz-border-soft)' }}>
               <div className="mz-eyebrow" style={{ marginBottom: 10 }}>Capping Criteria</div>
@@ -276,7 +388,7 @@ export default function ScoringBandsPageClient({
             <div>
               <span className="mz-eyebrow">Policy Editor</span>
               <div style={{ marginTop: 4, color: unlocked ? 'var(--mz-green-text)' : 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' }}>
-                {unlocked ? 'Unlocked' : 'Locked'}
+                {unlocked ? 'Unlocked — editing here and in Structured Bands are one source of truth' : 'Locked — use password above'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -292,7 +404,7 @@ export default function ScoringBandsPageClient({
                   </button>
                   <button
                     className="mz-clickable active"
-                    onClick={savePolicy}
+                    onClick={() => savePolicy('policy_editor')}
                     disabled={busy || !unlocked || Boolean(parsedDraft.error)}
                     style={{ padding: '7px 10px', opacity: busy || !unlocked || parsedDraft.error ? 0.55 : 1 }}
                   >
@@ -318,10 +430,13 @@ export default function ScoringBandsPageClient({
               )}
               <textarea
                 value={activeText}
-                onChange={(event) => setPolicyTextByRegion((current) => ({
-                  ...current,
-                  [activeRegion]: event.target.value,
-                }))}
+                onChange={(event) => {
+                  setPolicyTextByRegion((current) => ({
+                    ...current,
+                    [activeRegion]: event.target.value,
+                  }));
+                  setEditSource('policy_editor');
+                }}
                 readOnly={!unlocked}
                 rows={34}
                 spellCheck={false}
@@ -408,17 +523,19 @@ function RiskCategoryTable({ rows }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
         <thead>
           <tr>
-            {['Category', 'Min', 'Max', 'Ceiling', 'Votes', 'Refinancing'].map((head) => <TableHead key={head}>{head}</TableHead>)}
+            {['Category', 'Min', 'Max', 'Ceiling', 'Votes', 'Refinancing'].map((head) => (
+              <TableHead key={head} align={['Min', 'Max', 'Votes'].includes(head) ? 'right' : 'left'}>{head}</TableHead>
+            ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.category}>
               <TableCell strong>{row.category}</TableCell>
-              <TableCell mono>{row.min}</TableCell>
-              <TableCell mono>{row.max}</TableCell>
+              <TableCell mono align="right">{row.min}</TableCell>
+              <TableCell mono align="right">{row.max}</TableCell>
               <TableCell mono>{row.ceiling}</TableCell>
-              <TableCell mono>{row.votesRequired}</TableCell>
+              <TableCell mono align="right">{row.votesRequired}</TableCell>
               <TableCell mono>{row.refinancingThreshold}</TableCell>
             </tr>
           ))}
@@ -428,22 +545,30 @@ function RiskCategoryTable({ rows }) {
   );
 }
 
-function PolicySections({ sections }) {
+function PolicySections({ sections, unlocked, onBandChange }) {
   return (
     <div style={{ display: 'grid' }}>
-      {sections.map((section) => (
+      {sections.map((section, sectionIndex) => (
         <div key={section.id} style={{ padding: 18, borderTop: '1px solid var(--mz-border-soft)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline', marginBottom: 12 }}>
             <h2 style={{ fontSize: 'var(--mz-fs-h2)', margin: 0 }}>{section.title}</h2>
             {section.aggregateWeight != null && (
-              <span className="mz-mono" style={{ color: 'var(--mz-accent)', fontWeight: 900 }}>{section.aggregateWeight}%</span>
+              <span style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' }}>
+                Weight: <span className="mz-mono" style={{ color: 'var(--mz-accent)', fontWeight: 900 }}>{section.aggregateWeight}%</span>
+              </span>
             )}
           </div>
           <div style={{ display: 'grid', gap: 14 }}>
-            {(section.categories || []).map((category) => (
+            {(section.categories || []).map((category, categoryIndex) => (
               <div key={category.id}>
                 <div className="mz-eyebrow" style={{ color: 'var(--mz-accent-peach)', marginBottom: 8 }}>{category.title}</div>
-                <CriteriaTable criteria={category.criteria || []} />
+                <CriteriaTable
+                  criteria={category.criteria || []}
+                  unlocked={unlocked}
+                  onBandChange={(criterionIndex, bandIndex, field, value) =>
+                    onBandChange(sectionIndex, categoryIndex, criterionIndex, bandIndex, field, value)
+                  }
+                />
               </div>
             ))}
           </div>
@@ -453,25 +578,37 @@ function PolicySections({ sections }) {
   );
 }
 
-function CriteriaTable({ criteria }) {
+function CriteriaTable({ criteria, unlocked, onBandChange }) {
   return (
     <div style={{ overflowX: 'auto', border: '1px solid var(--mz-border-soft)', borderRadius: 8 }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
+        <colgroup>
+          <col style={{ width: '32%', minWidth: 200 }} />
+          <col style={{ width: 72 }} />
+          <col style={{ width: '34%', minWidth: 180 }} />
+          <col style={{ width: '24%', minWidth: 200 }} />
+        </colgroup>
         <thead>
           <tr>
             <TableHead>Metric</TableHead>
-            <TableHead>Weight</TableHead>
+            <TableHead align="right">Weight</TableHead>
             <TableHead>Bands</TableHead>
             <TableHead>Auto Rules</TableHead>
           </tr>
         </thead>
         <tbody>
-          {criteria.map((item) => (
+          {criteria.map((item, criterionIndex) => (
             <tr key={item.id}>
               <TableCell strong>{item.label}</TableCell>
-              <TableCell mono>{item.weight ?? '-'}</TableCell>
+              <TableCell mono align="right">{item.weight ?? '-'}</TableCell>
               <TableCell>
-                <BandList bands={item.bands || []} />
+                <BandList
+                  bands={item.bands || []}
+                  unlocked={unlocked}
+                  onBandChange={(bandIndex, field, value) =>
+                    onBandChange(criterionIndex, bandIndex, field, value)
+                  }
+                />
               </TableCell>
               <TableCell>
                 <RuleList item={item} />
@@ -484,14 +621,58 @@ function CriteriaTable({ criteria }) {
   );
 }
 
-function BandList({ bands }) {
+function BandList({ bands, unlocked, onBandChange }) {
   return (
     <div style={{ display: 'grid', gap: 4 }}>
-      {bands.map((band, index) => (
-        <div key={`${band.score}-${band.range}-${index}`} style={{ display: 'grid', gridTemplateColumns: '48px 72px 1fr', gap: 8, color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' }}>
-          <span className="mz-mono" style={{ color: scoreColor(band.score), fontWeight: 900 }}>{band.score}</span>
-          <span>{band.label}</span>
-          <span>{band.range}</span>
+      {bands.map((band, bandIndex) => (
+        <div
+          key={`${band.score}-${band.range}-${bandIndex}`}
+          style={{ display: 'grid', gridTemplateColumns: '52px 1fr', gap: 6, alignItems: 'center', fontSize: 'var(--mz-fs-xs)' }}
+        >
+          {unlocked ? (
+            <input
+              type="number"
+              value={band.score}
+              onChange={(event) => onBandChange(bandIndex, 'score', Number(event.target.value))}
+              style={{
+                width: '100%',
+                padding: '3px 5px',
+                fontFamily: 'var(--mz-font-mono)',
+                fontSize: 'var(--mz-fs-xs)',
+                fontWeight: 900,
+                color: scoreColor(band.score),
+                textAlign: 'right',
+                background: 'var(--mz-card-nested)',
+                border: '1px solid var(--mz-border-input)',
+                borderRadius: 4,
+              }}
+            />
+          ) : (
+            <span className="mz-mono" style={{ color: scoreColor(band.score), fontWeight: 900, textAlign: 'right' }}>
+              {band.score}
+            </span>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: 4, alignItems: 'center' }}>
+            <span style={{ color: 'var(--mz-muted)' }}>{band.label}</span>
+            {unlocked ? (
+              <input
+                type="text"
+                value={band.range}
+                onChange={(event) => onBandChange(bandIndex, 'range', event.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '3px 5px',
+                  fontSize: 'var(--mz-fs-xs)',
+                  color: 'var(--mz-text)',
+                  background: 'var(--mz-card-nested)',
+                  border: '1px solid var(--mz-border-input)',
+                  borderRadius: 4,
+                }}
+              />
+            ) : (
+              <span style={{ color: 'var(--mz-muted)' }}>{band.range}</span>
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -503,7 +684,7 @@ function RuleList({ item }) {
     item.autoApprove && ['Approve', item.autoApprove],
     item.autoReject && ['Reject', item.autoReject],
   ].filter(Boolean);
-  if (!rules.length) return <span style={{ color: 'var(--mz-muted)' }}>-</span>;
+  if (!rules.length) return <span style={{ color: 'var(--mz-muted)' }}>—</span>;
   return (
     <div style={{ display: 'grid', gap: 4 }}>
       {rules.map(([label, value]) => (
@@ -529,7 +710,7 @@ function CapCriteria({ rows }) {
             {row.bands?.map((band) => (
               <div key={`${row.id}-${band.range}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' }}>
                 <span>{band.range}</span>
-                <span className="mz-mono" style={{ color: 'var(--mz-text)' }}>{band.weight}%</span>
+                <span className="mz-mono" style={{ color: 'var(--mz-text)', textAlign: 'right' }}>{band.weight}%</span>
               </div>
             ))}
           </div>
@@ -539,15 +720,23 @@ function CapCriteria({ rows }) {
   );
 }
 
-function TableHead({ children }) {
+function TableHead({ children, align }) {
   return (
-    <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid var(--mz-border-soft)', color: 'var(--mz-accent)', fontSize: 'var(--mz-fs-xxs)', textTransform: 'uppercase', letterSpacing: 1 }}>
+    <th style={{
+      textAlign: align || 'left',
+      padding: '9px 10px',
+      borderBottom: '1px solid var(--mz-border-soft)',
+      color: 'var(--mz-accent)',
+      fontSize: 'var(--mz-fs-xxs)',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    }}>
       {children}
     </th>
   );
 }
 
-function TableCell({ children, mono, strong }) {
+function TableCell({ children, mono, strong, align }) {
   return (
     <td
       className={mono ? 'mz-mono' : undefined}
@@ -558,6 +747,7 @@ function TableCell({ children, mono, strong }) {
         fontWeight: strong ? 800 : 500,
         verticalAlign: 'top',
         fontSize: 'var(--mz-fs-xs)',
+        textAlign: align || 'left',
       }}
     >
       {children}
@@ -633,7 +823,7 @@ function toneColor(tone) {
 
 function messageTone(message) {
   const text = String(message || '').toLowerCase();
-  if (text.includes('saved') || text.includes('unlocked') || text.includes('reset')) return 'green';
+  if (text.includes('saved') || text.includes('unlocked') || text.includes('reset') || text.includes('locked')) return 'green';
   return 'amber';
 }
 

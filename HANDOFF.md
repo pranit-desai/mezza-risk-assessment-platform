@@ -12,10 +12,17 @@ This document is a bridge for any AI coding tool picking up work on this codebas
 ## 1. CURRENT STATE
 
 - **Branch:** `codex/supabase-case-spine-summary`
-- **Last commit:** `1c60edf` (`feat(seasonality): add dynamic seasonality library`)
+- **Last commit:** pending this session's commit
 - **Supabase project:** `pplcwqllhjtzkjqekvyd` (mezza-platform, ap-south-1, ACTIVE_HEALTHY)
 - **Vercel project:** `prj_VABEuPQGpn3RleTEWX39pnmEZhmm` (team: pranit-7973s-projects)
 - **Live case:** Hikari / Sushi Tokyo Miami LLC (`MZA-2026-001`) — **must not be touched**
+
+### Deployment visibility
+- **Vercel is deploying from `codex/supabase-case-spine-summary`** (NOT `main`). Codex has been promoting builds from this branch directly to production.
+- **Production URL:** `https://mezza-risk-assessment-platform.vercel.app`
+- **Branch preview URL:** `https://mezza-risk-assessment-platform-git-35e8cf-pranit-7973s-projects.vercel.app`
+- **Latest deployed commit:** `79402c5` (`feat(scoring): add locked policy bands`) — subsequent commits have preview deployments but have NOT been promoted to production yet.
+- **Important:** Ask Pranit before merging to `main` or promoting any deployment.
 
 ### What works
 - All core tables exist: `cases`, `groups`, `venues`, `disbursements`, `documents`, `document_requests`, `audit_log`, `users`, `group_lending_settings`, `connections`, `fc_accounts`, `fc_transactions`, `webhook_events`
@@ -42,22 +49,25 @@ Next: Pranit to add `SCORING_BANDS_PASSWORD` to Vercel + `.env.local` (see PENDI
 
 | When | Work item |
 |---|---|
-| Session start | Verified MCP connectivity: Supabase ✅ Vercel ✅ |
-| Task 1 | Audited 8 migration files vs. ledger + actual DB — found 5 not in ledger |
-| Task 1 | Confirmed `scoring_policies` + `seasonality_*` tables do NOT exist in DB |
-| Task 1 | Confirmed `on_hold` status missing from `cases_status_check` |
-| Task 1 | Confirmed `seasonalityStore.js` already degrades gracefully (Task 3 ✅ — no code change needed) |
-| Task 4 | Confirmed `SCORING_BANDS_PASSWORD` absent from `.env.local` and not visible in Vercel project config — logged under PENDING |
-| Task 2 | Registered `20260608000000` retroactively in Supabase ledger |
-| Task 2 | Registered `20260609112500` retroactively in Supabase ledger |
-| Task 2 | Applied `20260609061000` — `on_hold` added to constraint, `venues_group_region_fk` made DEFERRABLE INITIALLY IMMEDIATE |
-| Task 2 | Applied `20260612110000` — `scoring_policies` table created, RLS enabled |
-| Task 2 | Applied `20260612123000` — `seasonality_patterns`, `seasonality_venues`, `seasonality_venue_months` created, RLS enabled |
-| Task 2 | Verified all 4 new tables, all indexes, constraint, deferrable FK — all correct |
-| Task 2 | Verified Hikari (MZA-2026-001): score 76.36, grade B+, ceiling 84,942.24 USD — untouched ✅ |
-| Task 3 | `seasonalityStore.js` already has graceful degradation — no code change needed ✅ |
-| Task 4 | `SCORING_BANDS_PASSWORD` absent from Vercel + `.env.local` — logged under PENDING |
-| Task 5 | `npm run lint` ✅ no errors; `npm run build` ✅ 17 pages, 0 errors |
+| Session 1 start | Verified MCP connectivity: Supabase ✅ Vercel ✅ |
+| Session 1 | Audited 8 migration files vs. ledger + actual DB — found 5 not in ledger |
+| Session 1 | Confirmed `scoring_policies` + `seasonality_*` tables do NOT exist in DB |
+| Session 1 | Confirmed `on_hold` status missing from `cases_status_check` |
+| Session 1 | Confirmed `seasonalityStore.js` already degrades gracefully (Task 3 ✅ — no code change needed) |
+| Session 1 | Confirmed `SCORING_BANDS_PASSWORD` absent from `.env.local` and not visible in Vercel project config — logged under PENDING |
+| Session 1 | Registered `20260608000000` retroactively in Supabase ledger |
+| Session 1 | Registered `20260609112500` retroactively in Supabase ledger |
+| Session 1 | Applied `20260609061000` — `on_hold` added to constraint, `venues_group_region_fk` made DEFERRABLE INITIALLY IMMEDIATE |
+| Session 1 | Applied `20260612110000` — `scoring_policies` table created, RLS enabled |
+| Session 1 | Applied `20260612123000` — `seasonality_patterns`, `seasonality_venues`, `seasonality_venue_months` created, RLS enabled |
+| Session 1 | Verified all 4 new tables, all indexes, constraint, deferrable FK — all correct |
+| Session 1 | Verified Hikari (MZA-2026-001): score 76.36, grade B+, ceiling 84,942.24 USD — untouched ✅ |
+| Session 1 | `npm run lint` ✅ no errors; `npm run build` ✅ 17 pages, 0 errors |
+| Session 2 | **Task 4D** — Created + applied `20260612140000_cases_scoring_policy_version.sql`. `cases.scoring_policy_version text` column added so editing bands later never retroactively changes historical scores. |
+| Session 2 | **Task 4B (API)** — `lib/scoringPolicyStore.js`: `saveScoringPolicy` now accepts `source` param; audit log `new_value` includes `source` ('bands_inline' \| 'policy_editor'). |
+| Session 2 | **Task 4B/C (API)** — `app/api/scoring-bands/route.js`: added `manual_lock` action handler (writes audit_log, returns `{locked: true}`); passes `source` from body to `saveScoringPolicy`. |
+| Session 2 | **Task 4A/B/C (UI)** — `app/scoring-bands/ScoringBandsPageClient.jsx` fully rewritten: explicit column widths in `CriteriaTable` (32%/72px/34%/24%), numerics right-aligned, section weight labeled "Weight: N%", all colours use CSS token references (WCAG-safe), "Supabase" correctly spelled. Inline band editing when unlocked (score number input + range text input, calls `updateBandField` → mutates policyText, tracks `editSource:'bands_inline'`). Lock button visible when unlocked; dirty-state prompt with Save & Lock / Discard & Lock / Cancel options. Policy editor and structured bands share same policyText state (single source of truth). |
+| Session 2 | **Task 5** — `npm run lint` ✅ no errors; `npm run build` ✅ 17 pages compiled, 0 errors |
 
 ---
 
@@ -88,15 +98,14 @@ Next: Pranit to add `SCORING_BANDS_PASSWORD` to Vercel + `.env.local` (see PENDI
 
 | Check | Result |
 |---|---|
-| `npm run lint` | Not yet run this session |
-| `npm run build` | Not yet run this session |
 | `scoring_policies` table applied | ✅ RLS enabled, index created |
 | `seasonality_*` tables applied | ✅ All 3 tables, RLS enabled, all indexes created |
 | `on_hold` status in constraint | ✅ Confirmed in `cases_status_check` |
 | `venues_group_region_fk` deferrable | ✅ `condeferrable=true`, `condeferred=false` |
+| `cases.scoring_policy_version` column | ✅ Applied via `20260612140000` |
 | Hikari case integrity | ✅ score 76.36, B+, 84,942.24 USD — untouched |
-| `npm run lint` | ✅ No errors |
-| `npm run build` | ✅ Clean — 17 pages compiled, 0 errors |
+| `npm run lint` | ✅ No errors (session 2) |
+| `npm run build` | ✅ Clean — 17 pages compiled, 0 errors (session 2) |
 
 ---
 
@@ -104,14 +113,15 @@ Next: Pranit to add `SCORING_BANDS_PASSWORD` to Vercel + `.env.local` (see PENDI
 
 | Migration | In ledger | Tables exist | Status |
 |---|---|---|---|
-| `20260608000000` phase1_groups_venues_disbursements_documents | ✅ registered | ✅ | Retroactively registered this session |
-| `20260609061000` on_hold_and_group_region_update | ✅ | ✅ | Applied this session |
-| `20260609112500` reconcile_legacy_schema_for_case_spine | ✅ | ✅ | Retroactively registered this session |
+| `20260608000000` phase1_groups_venues_disbursements_documents | ✅ registered | ✅ | Retroactively registered session 1 |
+| `20260609061000` on_hold_and_group_region_update | ✅ | ✅ | Applied session 1 |
+| `20260609112500` reconcile_legacy_schema_for_case_spine | ✅ | ✅ | Retroactively registered session 1 |
 | `20260609153500` add_group_case_status | ✅ | ✅ | Was in ledger |
 | `20260609154500` backfill_case_groups_for_summary | ✅ | ✅ | Was in ledger |
 | `20260610110000` document_renewal_requests | ✅ | ✅ | Was in ledger |
-| `20260612110000` scoring_policies | ✅ | ✅ | Applied this session |
-| `20260612123000` seasonality_library | ✅ | ✅ | Applied this session |
+| `20260612110000` scoring_policies | ✅ | ✅ | Applied session 1 |
+| `20260612123000` seasonality_library | ✅ | ✅ | Applied session 1 |
+| `20260612140000` cases_scoring_policy_version | ✅ | ✅ (column on cases) | Applied session 2 |
 
 ---
 

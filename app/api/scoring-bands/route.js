@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { resolvePublicUser } from '@/lib/publicUser';
 import { loadScoringPolicyBundle, saveScoringPolicy } from '@/lib/scoringPolicyStore';
 import { normalizeScoringRegion } from '@/app/_lib/scoringPolicy';
@@ -69,6 +70,23 @@ export async function POST(request) {
     return NextResponse.json({ unlocked: true });
   }
 
+  if (body?.action === 'manual_lock') {
+    const region = normalizeScoringRegion(body?.region);
+    const { error: auditError } = await supabaseAdmin.from('audit_log').insert({
+      case_id: null,
+      field_name: `scoring_policy.manual_lock`,
+      old_value: null,
+      new_value: JSON.stringify({ region, locked_by: publicUser.email || authUser.email }),
+      value_type: 'top_level',
+      changed_by: publicUser.email || authUser.email,
+      changed_at: new Date().toISOString(),
+    });
+    if (auditError) {
+      console.error('[scoring-bands] manual_lock audit insert failed', auditError.message);
+    }
+    return NextResponse.json({ locked: true });
+  }
+
   if (body?.action !== 'save_policy') {
     return NextResponse.json({ error: 'Unsupported scoring-bands action' }, { status: 400 });
   }
@@ -79,6 +97,7 @@ export async function POST(request) {
     policy: body?.policy,
     userId: publicUser.id,
     userEmail: publicUser.email || authUser.email,
+    source: body?.source || 'policy_editor',
   });
 
   if (result.error) {
