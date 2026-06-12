@@ -12,17 +12,22 @@ This document is a bridge for any AI coding tool picking up work on this codebas
 ## 1. CURRENT STATE
 
 - **Branch:** `codex/supabase-case-spine-summary`
-- **Last commit:** pending this session's commit
+- **Last commit:** `f8df8ea` (`fix(venues): remove non-existent group_id column from cases INSERT`)
 - **Supabase project:** `pplcwqllhjtzkjqekvyd` (mezza-platform, ap-south-1, ACTIVE_HEALTHY)
 - **Vercel project:** `prj_VABEuPQGpn3RleTEWX39pnmEZhmm` (team: pranit-7973s-projects)
 - **Live case:** Hikari / Sushi Tokyo Miami LLC (`MZA-2026-001`) — **must not be touched**
 
 ### Deployment visibility
-- **Vercel is deploying from `codex/supabase-case-spine-summary`** (NOT `main`). Codex has been promoting builds from this branch directly to production.
+- **Vercel is deploying from `codex/supabase-case-spine-summary`** (NOT `main`). Promotion to production happens via `npx vercel promote <deployment-id> --yes`.
 - **Production URL:** `https://mezza-risk-assessment-platform.vercel.app`
-- **Branch preview URL:** `https://mezza-risk-assessment-platform-git-35e8cf-pranit-7973s-projects.vercel.app`
-- **Latest deployed commit:** `79402c5` (`feat(scoring): add locked policy bands`) — subsequent commits have preview deployments but have NOT been promoted to production yet.
-- **Important:** Ask Pranit before merging to `main` or promoting any deployment.
+- **Branch alias URL:** `https://mezza-risk-assessment-platform-git-35e8cf-pranit-7973s-projects.vercel.app`
+- **Production commit as of session 3:** `f8df8ea` — promoted via `npx vercel promote dpl_c8dxRXPVP8K7QVcgqXw8X4V12EfQ --yes`.
+- **Important:** Ask Pranit before merging to `main`.
+
+### .env.local — two issues fixed this session
+- **Correct Supabase project:** was pointing at `xwcqtemtisakdubgltjf` (pranit-desai's dashboard, which has NO tables). Fixed to `pplcwqllhjtzkjqekvyd` with the correct publishable key.
+- **SCORING_BANDS_PASSWORD_SHA256:** added to `.env.local` (hash value from Vercel, never committed).
+- **Still missing: `SUPABASE_SERVICE_ROLE_KEY`.** `lib/supabaseAdmin.js` throws if this is absent, so every server-side route fails locally. The value lives in Vercel production env vars. **Action for Pranit:** copy it from the Vercel dashboard → Project → Settings → Environment Variables and add to `.env.local`.
 
 ### What works
 - All core tables exist: `cases`, `groups`, `venues`, `disbursements`, `documents`, `document_requests`, `audit_log`, `users`, `group_lending_settings`, `connections`, `fc_accounts`, `fc_transactions`, `webhook_events`
@@ -30,18 +35,14 @@ This document is a bridge for any AI coding tool picking up work on this codebas
 - Document renewal request workflow complete
 - `lib/seasonalityStore.js` degrades gracefully when seasonality tables are missing (catches error codes `42P01` / `PGRST204` → returns `fallbackSeasonalityBundle`)
 
-### What was NOT yet applied when this session started (migration reconciliation in progress)
-- `scoring_policies` table — migration written, not applied to DB
-- `seasonality_patterns`, `seasonality_venues`, `seasonality_venue_months` — migration written, not applied
-- `on_hold` status value — missing from `cases_status_check` constraint
-- `venues_group_region_fk` — non-deferrable (migration 20260609061000 not applied)
+### All migrations applied as of session 3 (see migration table below)
 
 ---
 
 ## 2. IN PROGRESS
 
-All tasks from the handoff queue are complete. Branch is clean and pushed.
-Next: Pranit to add `SCORING_BANDS_PASSWORD` to Vercel + `.env.local` (see PENDING).
+Nothing in flight. Branch is clean, production is promoted to `f8df8ea`.
+One action item for Pranit before local dev works fully — see PENDING.
 
 ---
 
@@ -68,16 +69,25 @@ Next: Pranit to add `SCORING_BANDS_PASSWORD` to Vercel + `.env.local` (see PENDI
 | Session 2 | **Task 4B/C (API)** — `app/api/scoring-bands/route.js`: added `manual_lock` action handler (writes audit_log, returns `{locked: true}`); passes `source` from body to `saveScoringPolicy`. |
 | Session 2 | **Task 4A/B/C (UI)** — `app/scoring-bands/ScoringBandsPageClient.jsx` fully rewritten: explicit column widths in `CriteriaTable` (32%/72px/34%/24%), numerics right-aligned, section weight labeled "Weight: N%", all colours use CSS token references (WCAG-safe), "Supabase" correctly spelled. Inline band editing when unlocked (score number input + range text input, calls `updateBandField` → mutates policyText, tracks `editSource:'bands_inline'`). Lock button visible when unlocked; dirty-state prompt with Save & Lock / Discard & Lock / Cancel options. Policy editor and structured bands share same policyText state (single source of truth). |
 | Session 2 | **Task 5** — `npm run lint` ✅ no errors; `npm run build` ✅ 17 pages compiled, 0 errors |
+| Session 3 | **Item 1 (.env.local)** — Fixed `.env.local` to point at correct Supabase project (`pplcwqllhjtzkjqekvyd`, was `xwcqtemtisakdubgltjf` which has no tables); added `SCORING_BANDS_PASSWORD_SHA256`. Still needs `SUPABASE_SERVICE_ROLE_KEY` from Pranit (see PENDING). |
+| Session 3 | **Item 2 (seasonality DB proof)** — Created ZZ_TEST_DELETE group/venue/case via Supabase MCP. Monthly path: 3 rows landed in `seasonality_venue_months` with `source_type='case intake'`, `closest_pattern_id='USA_F&B_BASELINE'`, correct revenue/transaction figures. Non-monthly path: 0 rows in table, `extraction_meta.seasonality_source='seasonality_library_reference'`, `pos_exports_are_monthly=false`. Cleanup: all 4 tables returned 0 rows after DELETE. |
+| Session 3 | **Bug found + fixed** — `app/api/venues/route.js` was inserting `group_id` into `cases` but that column doesn't exist (relationship is via `venue_id → venues.group_id`). PostgREST would have returned 400 on every `/new-case` submission. Fix: removed the field from the INSERT. Committed as `f8df8ea`. |
+| Session 3 | **Item 3 (production promotion)** — Deployed `f8df8ea` to production via `npx vercel promote dpl_c8dxRXPVP8K7QVcgqXw8X4V12EfQ --yes`. Production URL `https://mezza-risk-assessment-platform.vercel.app` now on the route-fix commit. |
 
 ---
 
 ## 4. PENDING / BLOCKED
 
-### SCORING_BANDS_PASSWORD — action required by Pranit
+### SUPABASE_SERVICE_ROLE_KEY missing from .env.local — action required by Pranit
 
-`/api/scoring-bands/route.js` checks for `SCORING_BANDS_PASSWORD` or `SCORING_BANDS_PASSWORD_SHA256`. Neither is set in `.env.local` or Vercel. The route returns HTTP 503 and the scoring-bands page shows password as unconfigured.
+`lib/supabaseAdmin.js` throws `SUPABASE_SERVICE_ROLE_KEY is not set` if this env var is absent. Every server-side API route that uses `supabaseAdmin` will fail locally.
 
-**Action:** Add one of these to Vercel Production env vars and to `.env.local` (never commit the value).
+**Action:** Copy the value from Vercel dashboard → Project → Settings → Environment Variables and add to `.env.local`. Do not commit it. Once added, restart the dev server and `/scoring-bands` will show "Password: Server-side".
+
+The value is already set correctly in Vercel production — this is local-only.
+
+### SCORING_BANDS_PASSWORD_SHA256 — done
+Added to `.env.local` (hash `d764de4f…`). Vercel production already had it. No further action needed.
 
 ---
 
@@ -85,12 +95,14 @@ Next: Pranit to add `SCORING_BANDS_PASSWORD` to Vercel + `.env.local` (see PENDI
 
 | # | Issue | Status |
 |---|---|---|
-| 1 | `SCORING_BANDS_PASSWORD` not configured in Vercel or `.env.local` | Open — see PENDING |
+| 1 | `SUPABASE_SERVICE_ROLE_KEY` missing from `.env.local` — dev server admin routes broken locally | Open — Pranit to add from Vercel dashboard |
 | 2 | `/groups/new` form → generic 500 "Failed to create group" (FK violation or wrong Supabase client) | Open from prior Codex session |
 | 3 | `/api/fc/session` was fragile in live mode | Resolved (Stripe keys added to Vercel) |
 | 4 | `/connect` page WCAG contrast `#8a817a` | Resolved (`--mz-text-subtle` token added) |
 | 5 | No case-creation UI (`/cases/new`) | Open — known gap |
 | 6 | `mezza_databank.py` not integrated | Open — known gap, Phase 9 |
+| 7 | `seasonality_*` tables are empty — auto-seed triggers on first `loadSeasonalityBundle()` call (first `/seasonality` page load in browser) | Open — harmless, self-heals on first page visit |
+| 8 | `/new-case` venue creation was broken — `group_id` column doesn't exist on `cases` | Fixed in `f8df8ea` |
 
 ---
 
@@ -104,8 +116,15 @@ Next: Pranit to add `SCORING_BANDS_PASSWORD` to Vercel + `.env.local` (see PENDI
 | `venues_group_region_fk` deferrable | ✅ `condeferrable=true`, `condeferred=false` |
 | `cases.scoring_policy_version` column | ✅ Applied via `20260612140000` |
 | Hikari case integrity | ✅ score 76.36, B+, 84,942.24 USD — untouched |
-| `npm run lint` | ✅ No errors (session 2) |
-| `npm run build` | ✅ Clean — 17 pages compiled, 0 errors (session 2) |
+| Seasonality monthly path (DB) | ✅ 3 rows in `seasonality_venue_months`, correct fields, cleaned up |
+| Seasonality non-monthly path (DB) | ✅ 0 rows in table, `seasonality_source='seasonality_library_reference'` |
+| `.env.local` Supabase project | ✅ Fixed to `pplcwqllhjtzkjqekvyd` (was wrong project) |
+| `.env.local` scoring password | ✅ `SCORING_BANDS_PASSWORD_SHA256` added |
+| `/api/venues` POST route | ✅ `group_id` removed from cases INSERT (bug fixed) |
+| `npm run lint` | ✅ No errors (session 3) |
+| `npm run build` | ✅ Clean — 17 pages compiled, 0 errors (session 3) |
+| Production deployment | ✅ `f8df8ea` promoted to `https://mezza-risk-assessment-platform.vercel.app` |
+| `/scoring-bands` password: Server-side | ⏳ Blocked locally — needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` |
 
 ---
 
@@ -122,6 +141,8 @@ Next: Pranit to add `SCORING_BANDS_PASSWORD` to Vercel + `.env.local` (see PENDI
 | `20260612110000` scoring_policies | ✅ | ✅ | Applied session 1 |
 | `20260612123000` seasonality_library | ✅ | ✅ | Applied session 1 |
 | `20260612140000` cases_scoring_policy_version | ✅ | ✅ (column on cases) | Applied session 2 |
+
+All 9 migrations are in ledger and applied. No pending migrations.
 
 ---
 
