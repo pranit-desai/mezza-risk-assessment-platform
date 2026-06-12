@@ -3,6 +3,10 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { logSupabaseError } from '@/lib/supabaseDiagnostics';
 import { resolvePublicUser } from '@/lib/publicUser';
+import {
+  saveSeasonalityMonthlyRows,
+  seasonalitySnapshotForCase,
+} from '@/lib/seasonalityStore';
 
 async function requireUser() {
   const supabase = await createSupabaseServer();
@@ -32,7 +36,15 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { group_id, venue_name, location, concept, lettable_sqm } = body ?? {};
+  const {
+    group_id,
+    venue_name,
+    location,
+    concept,
+    lettable_sqm,
+    pos_exports_are_monthly,
+    seasonality_monthly_rows,
+  } = body ?? {};
 
   if (!group_id?.trim()) {
     return NextResponse.json({ error: 'group_id is required' }, { status: 400 });
@@ -51,6 +63,13 @@ export async function POST(req) {
   if (groupError || !group) {
     return NextResponse.json({ error: 'Group not found' }, { status: 400 });
   }
+
+  const posExportsAreMonthly = coerceBoolean(pos_exports_are_monthly);
+  const seasonalitySnapshot = await seasonalitySnapshotForCase({
+    region: group.region,
+    posExportsAreMonthly,
+    monthlyRows: seasonality_monthly_rows,
+  });
 
   const { data, error } = await supabaseAdmin
     .from('venues')
@@ -93,6 +112,7 @@ export async function POST(req) {
       concept: data.concept,
       region: data.region,
       status: 'under_review',
+      extracted_json: seasonalitySnapshot,
     })
     .select()
     .single();
@@ -109,5 +129,32 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Failed to create case for venue' }, { status: 500 });
   }
 
-  return NextResponse.json({ ...data, case: createdCase }, { status: 201 });
+  let seasonalitySave = { saved: 0, setupRequired: false, error: null };
+  if (posExportsAreMonthly) {
+    seasonalitySave = await saveSeasonalityMonthlyRows({
+      region: group.region,
+      group,
+      venue: data,
+      caseRow: createdCase,
+      rows: seasonality_monthly_rows,
+      publicUser,
+    });
+  }
+
+  return NextResponse.json({
+    ...data,
+    case: createdCase,
+    seasonality: {
+      source: seasonalitySnapshot.extraction_meta.seasonality_source,
+      pattern: seasonalitySnapshot.extraction_meta.seasonality_pattern,
+      monthlyRows: seasonalitySnapshot.extraction_meta.seasonality_monthly_rows,
+      savedMonthlyRows: seasonalitySave.saved,
+      setupRequired: seasonalitySave.setupRequired,
+      error: seasonalitySave.error,
+    },
+  }, { status: 201 });
+}
+
+function coerceBoolean(value) {
+  return value === true || value === 'true' || value === 'monthly' || value === 'yes';
 }

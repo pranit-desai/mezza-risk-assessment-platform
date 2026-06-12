@@ -41,6 +41,7 @@ export default function ScoringBandsPageClient({
   const [setupRequired, setSetupRequired] = useState(Boolean(initialSetupRequired));
   const [passwordConfigured, setPasswordConfigured] = useState(Boolean(initialPasswordConfigured));
   const [busy, setBusy] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const activeEntry = policies[activeRegion] || { policy: defaultPolicyForRegion(activeRegion), source: 'default' };
   const activePolicy = activeEntry.policy;
@@ -251,8 +252,8 @@ export default function ScoringBandsPageClient({
         </div>
       </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(320px, 0.9fr)', gap: 18, alignItems: 'start' }}>
-        <section className="mz-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <>
+        <section className="mz-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 18 }}>
           <div style={sectionHeader}>
             <div>
               <span className="mz-eyebrow">Structured Bands</span>
@@ -279,52 +280,67 @@ export default function ScoringBandsPageClient({
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {editorOpen && (
+                <>
+                  <button
+                    className="mz-clickable"
+                    onClick={resetDraft}
+                    disabled={busy}
+                    style={{ padding: '7px 10px', opacity: busy ? 0.55 : 1 }}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    className="mz-clickable active"
+                    onClick={savePolicy}
+                    disabled={busy || !unlocked || Boolean(parsedDraft.error)}
+                    style={{ padding: '7px 10px', opacity: busy || !unlocked || parsedDraft.error ? 0.55 : 1 }}
+                  >
+                    {busy ? 'Saving...' : 'Save Policy'}
+                  </button>
+                </>
+              )}
               <button
                 className="mz-clickable"
-                onClick={resetDraft}
-                disabled={busy}
-                style={{ padding: '7px 10px', opacity: busy ? 0.55 : 1 }}
+                onClick={() => setEditorOpen((open) => !open)}
+                style={{ padding: '7px 10px' }}
               >
-                Reset
-              </button>
-              <button
-                className="mz-clickable active"
-                onClick={savePolicy}
-                disabled={busy || !unlocked || Boolean(parsedDraft.error)}
-                style={{ padding: '7px 10px', opacity: busy || !unlocked || parsedDraft.error ? 0.55 : 1 }}
-              >
-                {busy ? 'Saving...' : 'Save Policy'}
+                {editorOpen ? 'Hide Editor' : 'Show Editor'}
               </button>
             </div>
           </div>
-          {parsedDraft.error && (
-            <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--mz-border-soft)' }}>
-              <Alert tone="amber">JSON error: {parsedDraft.error}</Alert>
-            </div>
+          {editorOpen && (
+            <>
+              {parsedDraft.error && (
+                <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--mz-border-soft)' }}>
+                  <Alert tone="amber">JSON error: {parsedDraft.error}</Alert>
+                </div>
+              )}
+              <textarea
+                value={activeText}
+                onChange={(event) => setPolicyTextByRegion((current) => ({
+                  ...current,
+                  [activeRegion]: event.target.value,
+                }))}
+                readOnly={!unlocked}
+                rows={34}
+                spellCheck={false}
+                style={{
+                  width: '100%',
+                  border: 0,
+                  borderRadius: 0,
+                  resize: 'vertical',
+                  minHeight: 640,
+                  fontFamily: 'var(--mz-font-mono)',
+                  fontSize: 'var(--mz-fs-xs)',
+                  lineHeight: 1.55,
+                  opacity: unlocked ? 1 : 0.72,
+                }}
+              />
+            </>
           )}
-          <textarea
-            value={activeText}
-            onChange={(event) => setPolicyTextByRegion((current) => ({
-              ...current,
-              [activeRegion]: event.target.value,
-            }))}
-            readOnly={!unlocked}
-            rows={34}
-            spellCheck={false}
-            style={{
-              width: '100%',
-              border: 0,
-              borderRadius: 0,
-              resize: 'vertical',
-              minHeight: 640,
-              fontFamily: 'var(--mz-font-mono)',
-              fontSize: 'var(--mz-fs-xs)',
-              lineHeight: 1.55,
-              opacity: unlocked ? 1 : 0.72,
-            }}
-          />
         </section>
-      </div>
+      </>
     </div>
   );
 }

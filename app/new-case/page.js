@@ -25,6 +25,8 @@ export default function NewCasePage() {
   const [groupName, setGroupName] = useState(() => initialSearchParam('group_name'));
   const [venueName, setVenueName] = useState(() => initialSearchParam('venue_name'));
   const [commercialPoc, setCommercialPoc] = useState('');
+  const [posExportsMonthly, setPosExportsMonthly] = useState('not_monthly');
+  const [monthlyRows, setMonthlyRows] = useState(() => buildDefaultMonthlyRows());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState(null);
@@ -69,12 +71,15 @@ export default function NewCasePage() {
   }
 
   async function createVenue(group) {
+    const cleanedMonthlyRows = posExportsMonthly === 'monthly' ? cleanMonthlyRows(monthlyRows) : [];
     const res = await fetch('/api/venues', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         group_id: group.id,
         venue_name: venueName.trim(),
+        pos_exports_are_monthly: posExportsMonthly === 'monthly',
+        seasonality_monthly_rows: cleanedMonthlyRows,
       }),
     });
     const data = await readJson(res);
@@ -98,6 +103,10 @@ export default function NewCasePage() {
       setError('Venue is required.');
       return;
     }
+    if (posExportsMonthly === 'monthly' && cleanMonthlyRows(monthlyRows).length === 0) {
+      setError('Add at least one monthly POS revenue row, or switch POS exports to Not monthly.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -105,11 +114,27 @@ export default function NewCasePage() {
       const venue = await createVenue(group);
       setCreated({ group, venue });
       setVenueName('');
+      setMonthlyRows(buildDefaultMonthlyRows());
     } catch (err) {
       setError(err.message || 'Failed to add case intake');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function updateMonthlyRow(id, patch) {
+    setMonthlyRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  }
+
+  function addMonthlyRow() {
+    setMonthlyRows((current) => [
+      ...current,
+      { id: `manual-${Date.now()}`, month_start: '', reported_revenue: '', transactions: '' },
+    ]);
+  }
+
+  function removeMonthlyRow(id) {
+    setMonthlyRows((current) => current.length <= 1 ? current : current.filter((row) => row.id !== id));
   }
 
   return (
@@ -156,6 +181,94 @@ export default function NewCasePage() {
             </label>
           </div>
 
+          <div style={seasonalityBox}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div>
+                <div className="mz-eyebrow">Seasonality</div>
+                <div style={{ color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)', marginTop: 4 }}>
+                  POS export cadence
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className={`mz-clickable ${posExportsMonthly === 'monthly' ? 'active' : ''}`}
+                  onClick={() => setPosExportsMonthly('monthly')}
+                  style={{ padding: '7px 11px' }}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  className={`mz-clickable ${posExportsMonthly === 'not_monthly' ? 'active' : ''}`}
+                  onClick={() => setPosExportsMonthly('not_monthly')}
+                  style={{ padding: '7px 11px' }}
+                >
+                  Not monthly
+                </button>
+              </div>
+            </div>
+
+            {posExportsMonthly === 'monthly' ? (
+              <div style={{ marginTop: 14 }}>
+                <div style={monthlyHeader}>
+                  <span>Month</span>
+                  <span>Revenue</span>
+                  <span>Transactions</span>
+                  <span />
+                </div>
+                <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                  {monthlyRows.map((row) => (
+                    <div key={row.id} style={monthlyRowGrid}>
+                      <input
+                        type="month"
+                        value={row.month_start}
+                        onChange={(event) => updateMonthlyRow(row.id, { month_start: event.target.value })}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={row.reported_revenue}
+                        onChange={(event) => updateMonthlyRow(row.id, { reported_revenue: event.target.value })}
+                        placeholder={region === 'USA' ? 'USD' : 'AED'}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={row.transactions}
+                        onChange={(event) => updateMonthlyRow(row.id, { transactions: event.target.value })}
+                        placeholder="Optional"
+                      />
+                      <button
+                        type="button"
+                        className="mz-clickable"
+                        onClick={() => removeMonthlyRow(row.id)}
+                        style={{ padding: '7px 9px' }}
+                        title="Remove row"
+                      >
+                        X
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="mz-clickable"
+                  onClick={addMonthlyRow}
+                  style={{ padding: '7px 10px', marginTop: 10 }}
+                >
+                  + Add Month
+                </button>
+              </div>
+            ) : (
+              <div style={{ marginTop: 12, color: 'var(--mz-muted)', fontSize: 'var(--mz-fs-xs)' }}>
+                The case will reference the {region} seasonality data bank.
+              </div>
+            )}
+          </div>
+
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
@@ -184,6 +297,13 @@ export default function NewCasePage() {
               <Link href={`/groups/${created.group.group_key}`} style={{ color: 'inherit', fontWeight: 900 }}>
                 Open group
               </Link>
+              {created.venue.seasonality && (
+                <div style={{ marginTop: 6 }}>
+                  Seasonality: {created.venue.seasonality.savedMonthlyRows} monthly row(s) saved; pattern {created.venue.seasonality.pattern}.
+                  {created.venue.seasonality.setupRequired ? ' Apply the seasonality migration to persist the library rows.' : ''}
+                  {created.venue.seasonality.error ? ` ${created.venue.seasonality.error}` : ''}
+                </div>
+              )}
             </div>
           )}
 
@@ -237,6 +357,31 @@ export default function NewCasePage() {
   );
 }
 
+function buildDefaultMonthlyRows() {
+  const now = new Date();
+  const rows = [];
+  for (let offset = 11; offset >= 0; offset -= 1) {
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1 - offset, 1));
+    rows.push({
+      id: `month-${date.toISOString().slice(0, 7)}`,
+      month_start: date.toISOString().slice(0, 7),
+      reported_revenue: '',
+      transactions: '',
+    });
+  }
+  return rows;
+}
+
+function cleanMonthlyRows(rows) {
+  return (rows || [])
+    .map((row) => ({
+      month_start: row.month_start,
+      reported_revenue: Number(row.reported_revenue),
+      transactions: row.transactions === '' ? null : Number(row.transactions),
+    }))
+    .filter((row) => row.month_start && Number.isFinite(row.reported_revenue) && row.reported_revenue > 0);
+}
+
 const grid = {
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 0.8fr)',
@@ -269,6 +414,32 @@ const dropZone = {
   justifyContent: 'center',
   textAlign: 'center',
   padding: 20,
+};
+
+const seasonalityBox = {
+  marginTop: 18,
+  padding: 14,
+  border: '1px solid var(--mz-border-soft)',
+  borderRadius: 8,
+  background: 'var(--mz-card-nested)',
+};
+
+const monthlyHeader = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(130px, 0.8fr) minmax(140px, 1fr) minmax(130px, 0.8fr) 42px',
+  gap: 8,
+  color: 'var(--mz-muted)',
+  fontSize: 'var(--mz-fs-xxs)',
+  textTransform: 'uppercase',
+  letterSpacing: 1,
+  padding: '0 2px',
+};
+
+const monthlyRowGrid = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(130px, 0.8fr) minmax(140px, 1fr) minmax(130px, 0.8fr) 42px',
+  gap: 8,
+  alignItems: 'center',
 };
 
 const actions = {

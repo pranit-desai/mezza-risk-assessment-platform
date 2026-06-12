@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/new-case", label: "New Case", icon: "N" },
   { href: "/banking", label: "Banking", icon: "B" },
   { href: "/documents", label: "Documents", icon: "DOC" },
+  { href: "/seasonality", label: "Seasonality", icon: "SEA" },
   { href: "/scoring-bands", label: "Scoring Bands", icon: "SB" },
 ];
 

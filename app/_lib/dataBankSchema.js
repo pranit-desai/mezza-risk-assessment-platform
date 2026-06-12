@@ -475,7 +475,12 @@ export const DATA_BANK_SECTIONS = [
       { key: "analysis_date", label: "Analysis Date", type: "date", editable: false, required: false },
       { key: "extracted_date", label: "Extracted Date", type: "date", editable: false, required: false },
       { key: "data_bank_version", label: "Data Bank Version", type: "text", editable: false, required: false },
+      { key: "pos_exports_are_monthly", label: "POS Exports Monthly", type: "boolean", editable: false, required: false },
+      { key: "seasonality_source", label: "Seasonality Source", type: "text", editable: false, required: false },
+      { key: "seasonality_region", label: "Seasonality Region", type: "text", editable: false, required: false },
       { key: "seasonality_pattern", label: "Seasonality Pattern", type: "text", editable: false, required: false, computedNote: "Derived from closest-match library (month-level POS not always available)" },
+      { key: "seasonality_data_bank_version", label: "Seasonality Bank Version", type: "text", editable: false, required: false },
+      { key: "seasonality_monthly_rows", label: "Seasonality Monthly Rows", type: "number", editable: false, required: false },
     ],
   },
 ];
