@@ -104,7 +104,6 @@ export async function POST(req) {
   const { data: createdCase, error: caseError } = await supabaseAdmin
     .from('cases')
     .insert({
-      group_id: group.id,
       venue_id: data.id,
       group_name: group.group_name,
       venue_name: data.venue_name,
